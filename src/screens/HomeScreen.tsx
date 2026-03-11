@@ -17,6 +17,7 @@ import {
   PawPrint,
 } from 'lucide-react-native';
 import { ANIMALS, CATEGORIES, Animal } from '../constants/mockData';
+import { FilterScreen } from './FilterScreen';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
@@ -25,6 +26,11 @@ interface HomeScreenProps {
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
+
+  if (showFilter) {
+    return <FilterScreen onClose={() => setShowFilter(false)} />;
+  }
 
   const filteredAnimals = ANIMALS.filter((animal) => {
     const matchesCategory =
@@ -98,7 +104,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
             onChangeText={setSearchQuery}
           />
         </View>
-        <TouchableOpacity style={styles.filterBtn}>
+        <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilter(true)}>
           <SlidersHorizontal size={20} color="white" />
         </TouchableOpacity>
       </View>
