@@ -10,7 +10,11 @@ import {
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 
-export const LoginScreen = () => {
+type LoginScreenProps = {
+  onRegisterPress?: () => void;
+};
+
+export const LoginScreen = ({ onRegisterPress }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,7 +28,7 @@ export const LoginScreen = () => {
         <View style={styles.logoCircle}>
           <PawPrint color="#f97316" size={45} />
         </View>
-        <Text style={styles.title}>PawsConnect</Text>
+        <Text style={styles.brandName}>PawsConnect</Text>
         <Text style={styles.subtitle}>Witaj ponownie!</Text>
       </View>
 
@@ -75,7 +79,7 @@ export const LoginScreen = () => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Nie masz konta? </Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={onRegisterPress}>
             <Text style={styles.linkText}>Zarejestruj się</Text>
           </TouchableOpacity>
         </View>
@@ -95,7 +99,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: { fontSize: 32, fontWeight: '800', color: '#fff', marginTop: 10 },
+  brandName: { fontSize: 32, fontWeight: '800', color: '#fff', marginTop: 15 },
   subtitle: { color: '#ffedd5', marginTop: 8, fontWeight: '500' },
   formCard: {
     flex: 1,
