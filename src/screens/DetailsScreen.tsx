@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -18,15 +18,24 @@ import {
   CalendarCheck 
 } from 'lucide-react-native';
 import { Animal } from '../constants/mockData';
+import { WalkReservationScreen } from './WalkReservationScreen';
+import { AdoptionFormScreen } from './AdoptionFormScreen';
 
-// Tymczasowo przyjmujemy, że przekazujemy obiekt animal jako prop
-// Docelowo będzie to szło przez nawigację: route.params
 interface DetailsScreenProps {
   animal: Animal;
   onBack: () => void;
 }
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
+  const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
+
+  if (subScreen === 'walk') {
+    return <WalkReservationScreen animal={animal} onBack={() => setSubScreen(null)} onSuccess={() => setSubScreen(null)} />;
+  }
+  if (subScreen === 'adopt') {
+    return <AdoptionFormScreen animal={animal} onBack={() => setSubScreen(null)} onSuccess={() => setSubScreen(null)} />;
+  }
+
   return (
     <View style={styles.container}>
       {/* Zdjęcie z przyciskami na górze */}
@@ -94,11 +103,11 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 
       {/* Dolny panel z przyciskami akcji */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.walkBtn}>
+        <TouchableOpacity style={styles.walkBtn} onPress={() => setSubScreen('walk')}>
           <Clock size={20} color="#f97316" />
           <Text style={styles.walkBtnText}>Umów spacer</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.adoptBtn}>
+        <TouchableOpacity style={styles.adoptBtn} onPress={() => setSubScreen('adopt')}>
           <CalendarCheck size={20} color="white" />
           <Text style={styles.adoptBtnText}>Adoptuj</Text>
         </TouchableOpacity>
