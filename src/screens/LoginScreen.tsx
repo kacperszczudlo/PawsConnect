@@ -12,12 +12,20 @@ import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 
 type LoginScreenProps = {
   onRegisterPress?: () => void;
+  onLoginPress?: () => void;
 };
 
-export const LoginScreen = ({ onRegisterPress }: LoginScreenProps) => {
+export const LoginScreen = ({
+  onRegisterPress,
+  onLoginPress,
+}: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = () => {
+    onLoginPress?.();
+  };
 
   return (
     <KeyboardAvoidingView
@@ -34,6 +42,7 @@ export const LoginScreen = ({ onRegisterPress }: LoginScreenProps) => {
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Zaloguj się</Text>
+        <Text style={styles.helperText}>Przycisk logowania tymczasowo pomija autoryzację.</Text>
 
         <View style={styles.inputLabel}>
           <Text style={styles.labelText}>ADRES E-MAIL</Text>
@@ -73,7 +82,7 @@ export const LoginScreen = ({ onRegisterPress }: LoginScreenProps) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.loginButton}>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Zaloguj się</Text>
         </TouchableOpacity>
 
@@ -114,7 +123,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1e293b',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 8,
+  },
+  helperText: {
+    textAlign: 'center',
+    color: '#64748b',
+    fontSize: 13,
+    marginBottom: 22,
   },
   inputLabel: { marginBottom: 8, marginLeft: 4 },
   labelText: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8' },
