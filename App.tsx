@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { TabNavigator } from './src/navigation/TabNavigator';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { DetailsScreen } from './src/screens/DetailsScreen';
@@ -17,17 +18,21 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {isAuthenticated && selectedAnimal ? (
+      {!isAuthenticated ? (
+        authScreen === 'login' ? (
+          <LoginScreen
+            onLoginPress={handleLogin}
+            onRegisterPress={() => setAuthScreen('register')}
+          />
+        ) : (
+          <RegisterScreen onLoginPress={() => setAuthScreen('login')} />
+        )
+      ) : selectedAnimal ? (
         <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
-      ) : isAuthenticated ? (
-        <HomeScreen onAnimalPress={setSelectedAnimal} />
-      ) : authScreen === 'login' ? (
-        <LoginScreen
-          onLoginPress={handleLogin}
-          onRegisterPress={() => setAuthScreen('register')}
-        />
       ) : (
-        <RegisterScreen onLoginPress={() => setAuthScreen('login')} />
+        <NavigationContainer>
+          <TabNavigator onAnimalPress={setSelectedAnimal} />
+        </NavigationContainer>
       )}
     </SafeAreaProvider>
   );
