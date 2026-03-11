@@ -18,7 +18,11 @@ import {
 } from 'lucide-react-native';
 import { ANIMALS, CATEGORIES, Animal } from '../constants/mockData';
 
-export const HomeScreen = () => {
+interface HomeScreenProps {
+  onAnimalPress?: (animal: Animal) => void;
+}
+
+export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -39,7 +43,7 @@ export const HomeScreen = () => {
   });
 
   const renderAnimalCard = ({ item }: { item: Animal }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.9}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => onAnimalPress?.(item)}>
       <Image source={{ uri: item.image }} style={styles.image} />
       <View style={styles.info}>
         <View style={styles.cardHeader}>
