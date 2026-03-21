@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { ANIMALS, CATEGORIES, Animal } from '../constants/mockData';
 import { FilterScreen } from './FilterScreen';
+import { useFavorites } from '../context/FavoritesContext';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
@@ -27,6 +28,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   if (showFilter) {
     return <FilterScreen onClose={() => setShowFilter(false)} />;
@@ -54,11 +56,14 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
       <View style={styles.info}>
         <View style={styles.cardHeader}>
           <Text style={styles.name}>{item.name}</Text>
-          <TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => toggleFavorite(item.id)}
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          >
             <Heart
               size={20}
-              color={item.liked ? '#f97316' : '#cbd5e1'}
-              fill={item.liked ? '#f97316' : 'none'}
+              color={isFavorite(item.id) ? '#f97316' : '#cbd5e1'}
+              fill={isFavorite(item.id) ? '#f97316' : 'none'}
             />
           </TouchableOpacity>
         </View>
@@ -80,33 +85,35 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.locLabel}>LOKALIZACJA SCHRONISKA</Text>
-          <View style={styles.locRow}>
-            <MapPin size={16} color="#f97316" />
-            <Text style={styles.locText}>Krakow, PL</Text>
+      <View style={styles.heroPanel}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.locLabel}>TWOJA LOKALIZACJA</Text>
+            <View style={styles.locRow}>
+              <MapPin size={16} color="#f97316" />
+              <Text style={styles.locText}>Kraków, Polska</Text>
+            </View>
+          </View>
+          <View style={styles.avatarBtn}>
+            <PawPrint size={24} color="#f97316" />
           </View>
         </View>
-        <View style={styles.avatarBtn}>
-          <PawPrint size={24} color="#f97316" />
-        </View>
-      </View>
 
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Search size={20} color="#94a3b8" />
-          <TextInput
-            placeholder="Szukaj przyjaciela..."
-            placeholderTextColor="#94a3b8"
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        <View style={styles.searchSection}>
+          <View style={styles.searchBar}>
+            <Search size={20} color="#94a3b8" />
+            <TextInput
+              placeholder="Szukaj zwierzaka..."
+              placeholderTextColor="#94a3b8"
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilter(true)}>
+            <SlidersHorizontal size={20} color="white" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilter(true)}>
-          <SlidersHorizontal size={20} color="white" />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.categoriesWrapper}>
@@ -154,41 +161,55 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
+  heroPanel: {
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 10,
     alignItems: 'center',
   },
   locLabel: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#94a3b8',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   locRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   locText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#1e293b',
     marginLeft: 4,
   },
   avatarBtn: {
-    width: 45,
-    height: 45,
-    backgroundColor: '#fff',
-    borderRadius: 15,
+    width: 42,
+    height: 42,
+    backgroundColor: '#ffedd5',
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    elevation: 1,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
   },
   searchSection: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    marginBottom: 4,
     gap: 12,
   },
   searchBar: {
@@ -199,7 +220,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 15,
     height: 50,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    elevation: 1,
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 14 },
   filterBtn: {
@@ -210,8 +233,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoriesWrapper: { marginBottom: 20 },
-  categoriesContent: { paddingHorizontal: 20 },
+  categoriesWrapper: { marginTop: 16, marginBottom: 14 },
+  categoriesContent: { paddingHorizontal: 24 },
   catBtn: {
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -224,23 +247,28 @@ const styles = StyleSheet.create({
   catBtnActive: { backgroundColor: '#f97316', borderColor: '#f97316' },
   catText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
   catTextActive: { color: '#fff' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  listContent: { paddingHorizontal: 24, paddingTop: 2, paddingBottom: 110 },
   card: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 12,
-    marginBottom: 16,
-    elevation: 3,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  image: { width: 110, height: 110, borderRadius: 20 },
+  image: { width: 96, height: 96, borderRadius: 18 },
   info: { flex: 1, marginLeft: 16, justifyContent: 'center' },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  name: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+  name: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
   breed: { fontSize: 12, color: '#64748b', marginTop: 4 },
   tags: { flexDirection: 'row', marginTop: 12, gap: 8 },
   tagAge: {

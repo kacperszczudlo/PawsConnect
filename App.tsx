@@ -6,6 +6,7 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import { DetailsScreen } from './src/screens/DetailsScreen';
 import { Animal } from './src/constants/mockData';
+import { FavoritesProvider } from './src/context/FavoritesContext';
 
 export default function App() {
   const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
@@ -27,12 +28,16 @@ export default function App() {
         ) : (
           <RegisterScreen onLoginPress={() => setAuthScreen('login')} />
         )
-      ) : selectedAnimal ? (
-        <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
       ) : (
-        <NavigationContainer>
-          <TabNavigator onAnimalPress={setSelectedAnimal} />
-        </NavigationContainer>
+        <FavoritesProvider>
+          {selectedAnimal ? (
+            <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
+          ) : (
+            <NavigationContainer>
+              <TabNavigator onAnimalPress={setSelectedAnimal} />
+            </NavigationContainer>
+          )}
+        </FavoritesProvider>
       )}
     </SafeAreaProvider>
   );

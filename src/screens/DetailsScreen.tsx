@@ -20,6 +20,7 @@ import {
 import { Animal } from '../constants/mockData';
 import { WalkReservationScreen } from './WalkReservationScreen';
 import { AdoptionFormScreen } from './AdoptionFormScreen';
+import { useFavorites } from '../context/FavoritesContext';
 
 interface DetailsScreenProps {
   animal: Animal;
@@ -28,6 +29,7 @@ interface DetailsScreenProps {
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   if (subScreen === 'walk') {
     return <WalkReservationScreen animal={animal} onBack={() => setSubScreen(null)} onSuccess={() => setSubScreen(null)} />;
@@ -49,8 +51,12 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <TouchableOpacity style={styles.iconBtn}>
               <Share2 size={20} color="#1e293b" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Heart size={20} color={animal.liked ? "#f97316" : "#1e293b"} fill={animal.liked ? "#f97316" : "none"} />
+            <TouchableOpacity style={styles.iconBtn} onPress={() => toggleFavorite(animal.id)}>
+              <Heart
+                size={20}
+                color={isFavorite(animal.id) ? '#f97316' : '#1e293b'}
+                fill={isFavorite(animal.id) ? '#f97316' : 'none'}
+              />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -117,8 +123,8 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  imageContainer: { height: 400, position: 'relative' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  imageContainer: { height: 320, position: 'relative' },
   mainImage: { width: '100%', height: '100%' },
   headerButtons: { 
     position: 'absolute', 
@@ -138,13 +144,20 @@ const styles = StyleSheet.create({
   },
   content: { 
     flex: 1, 
-    backgroundColor: '#fff', 
+    backgroundColor: '#f8fafc', 
     marginTop: -30, 
     borderTopLeftRadius: 35, 
     borderTopRightRadius: 35, 
-    padding: 25 
+    paddingHorizontal: 24,
+    paddingTop: 22,
   },
-  infoCard: { paddingBottom: 100 },
+  infoCard: {
+    paddingBottom: 112,
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+  },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   name: { fontSize: 28, fontWeight: 'bold', color: '#1e293b' },
   genderTag: { backgroundColor: '#f1f5f9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
@@ -175,7 +188,9 @@ const styles = StyleSheet.create({
     left: 0, 
     right: 0, 
     backgroundColor: '#fff', 
-    padding: 20, 
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 22,
     flexDirection: 'row', 
     gap: 15,
     borderTopWidth: 1,

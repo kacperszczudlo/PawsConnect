@@ -34,15 +34,14 @@ export const LoginScreen = ({
     >
       <View style={styles.header}>
         <View style={styles.logoCircle}>
-          <PawPrint color="#f97316" size={45} />
+          <PawPrint color="#f97316" size={38} />
         </View>
         <Text style={styles.brandName}>PawsConnect</Text>
-        <Text style={styles.subtitle}>Witaj ponownie!</Text>
+        <Text style={styles.subtitle}>Wolontariat i adopcje</Text>
       </View>
 
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Zaloguj się</Text>
-        <Text style={styles.helperText}>Przycisk logowania tymczasowo pomija autoryzację.</Text>
 
         <View style={styles.inputLabel}>
           <Text style={styles.labelText}>ADRES E-MAIL</Text>
@@ -98,38 +97,48 @@ export const LoginScreen = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f97316' },
-  header: { alignItems: 'center', paddingTop: 80, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+  header: {
+    alignItems: 'center',
+    paddingTop: 64,
+    paddingBottom: 36,
+    backgroundColor: '#f97316',
+    borderBottomLeftRadius: 48,
+    borderBottomRightRadius: 48,
+  },
   logoCircle: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     backgroundColor: '#fff',
-    borderRadius: 40,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  brandName: { fontSize: 32, fontWeight: '800', color: '#fff', marginTop: 15 },
-  subtitle: { color: '#ffedd5', marginTop: 8, fontWeight: '500' },
+  brandName: { fontSize: 30, fontWeight: '800', color: '#fff', marginTop: 12 },
+  subtitle: { color: '#ffedd5', marginTop: 4, fontWeight: '600', fontSize: 12 },
   formCard: {
     flex: 1,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    paddingHorizontal: 30,
+    marginTop: 18,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 28,
+    paddingHorizontal: 22,
     paddingTop: 30,
+    paddingBottom: 24,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   formTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#1e293b',
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  helperText: {
-    textAlign: 'center',
-    color: '#64748b',
-    fontSize: 13,
-    marginBottom: 22,
+    marginBottom: 24,
   },
   inputLabel: { marginBottom: 8, marginLeft: 4 },
   labelText: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8' },

@@ -13,6 +13,35 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
 
+  const handleDateChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 8);
+
+    if (digitsOnly.length <= 2) {
+      setDate(digitsOnly);
+      return;
+    }
+
+    if (digitsOnly.length <= 4) {
+      setDate(`${digitsOnly.slice(0, 2)}.${digitsOnly.slice(2)}`);
+      return;
+    }
+
+    setDate(
+      `${digitsOnly.slice(0, 2)}.${digitsOnly.slice(2, 4)}.${digitsOnly.slice(4)}`,
+    );
+  };
+
+  const handleTimeChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
+
+    if (digitsOnly.length <= 2) {
+      setTime(digitsOnly);
+      return;
+    }
+
+    setTime(`${digitsOnly.slice(0, 2)}:${digitsOnly.slice(2)}`);
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.header}>
@@ -36,7 +65,7 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
           <TextInput
             style={styles.input}
             value={date}
-            onChangeText={setDate}
+            onChangeText={handleDateChange}
             placeholder="DD.MM.RRRR"
             placeholderTextColor="#94a3b8"
             keyboardType="numeric"
@@ -45,7 +74,7 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
           <TextInput
             style={styles.input}
             value={time}
-            onChangeText={setTime}
+            onChangeText={handleTimeChange}
             placeholder="GG:MM"
             placeholderTextColor="#94a3b8"
             keyboardType="numeric"
@@ -68,13 +97,14 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fff',
   },
   backBtn: {
     width: 40,
@@ -89,7 +119,7 @@ const styles = StyleSheet.create({
   animalSummary: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 15,
     marginBottom: 30,
@@ -108,7 +138,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff',
     borderRadius: 12,
     paddingHorizontal: 15,
     height: 52,
@@ -118,25 +148,29 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   infoNote: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#fff7ed',
     borderRadius: 12,
     padding: 15,
     borderLeftWidth: 3,
-    borderLeftColor: '#3b82f6',
+    borderLeftColor: '#f97316',
   },
-  infoText: { color: '#1d4ed8', fontSize: 13, lineHeight: 20 },
+  infoText: { color: '#c2410c', fontSize: 13, lineHeight: 20 },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
+    backgroundColor: '#fff',
   },
   submitBtn: {
     height: 56,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#f97316',
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#f97316',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 4,
   },
   submitBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
