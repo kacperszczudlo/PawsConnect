@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Image, ScrollView } from 'react-native';
-import { Camera, ChevronLeft, LogOut } from 'lucide-react-native';
+import { Camera, ChevronLeft, LogOut, Settings } from 'lucide-react-native';
 import { EditProfileForm } from '../components/profile/EditProfileForm';
 import { FavoriteAnimalsList } from '../components/profile/FavoriteAnimalsList';
 import { ProfileMenuList } from '../components/profile/ProfileMenuList';
@@ -78,7 +78,12 @@ export const ProfileScreen = () => {
       {section === 'overview' ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <View style={styles.hero}>
-            <Text style={styles.heroTitle}>Twój Profil</Text>
+            <View style={styles.heroTopRow}>
+              <Text style={styles.heroTitle}>Twój Profil</Text>
+              <TouchableOpacity style={styles.settingsBtn} onPress={() => setSection('edit')}>
+                <Settings size={18} color="#f97316" />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.avatarWrap}>
               <View style={styles.avatarRing}>
@@ -170,10 +175,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroTitle: {
-    width: '100%',
     color: '#fff',
     fontSize: 30,
     fontWeight: '800',
+  },
+  heroTopRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingsBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarWrap: {
     marginTop: 18,
