@@ -1,12 +1,12 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, Heart, Calendar, User } from 'lucide-react-native';
 import { HomeScreen } from '../screens/HomeScreen';
+import { FavoritesScreen } from '../screens/FavoritesScreen';
+import { VisitsScreen } from '../screens/VisitsScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { Animal } from '../constants/mockData';
-
-const FavoritesScreen = () => <HomeScreen />;
-const VisitsScreen = () => <HomeScreen />;
-const ProfileScreen = () => <HomeScreen />;
 
 const Tab = createBottomTabNavigator();
 
@@ -15,6 +15,25 @@ interface TabNavigatorProps {
 }
 
 export const TabNavigator = ({ onAnimalPress }: TabNavigatorProps) => {
+  const renderTabIcon = (
+    Icon: typeof Home,
+    color: string,
+    focused: boolean,
+  ) => (
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Icon size={22} color={color} />
+      <View
+        style={{
+          marginTop: 4,
+          width: 4,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: focused ? '#f97316' : 'transparent',
+        }}
+      />
+    </View>
+  );
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -22,44 +41,51 @@ export const TabNavigator = ({ onAnimalPress }: TabNavigatorProps) => {
         tabBarActiveTintColor: '#f97316',
         tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
-          height: 70,
-          paddingBottom: 10,
+          height: 78,
+          paddingBottom: 12,
+          paddingTop: 8,
           borderTopWidth: 1,
           borderTopColor: '#f1f5f9',
+          backgroundColor: '#fff',
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 14,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: 'bold',
+          fontWeight: '700',
         },
       }}
     >
       <Tab.Screen
         name="Start"
         options={{
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => renderTabIcon(Home, color, focused),
         }}
       >
         {() => <HomeScreen onAnimalPress={onAnimalPress} />}
       </Tab.Screen>
       <Tab.Screen
         name="Ulubione"
-        component={FavoritesScreen}
         options={{
-          tabBarIcon: ({ color }) => <Heart size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => renderTabIcon(Heart, color, focused),
         }}
-      />
+      >
+        {() => <FavoritesScreen onAnimalPress={onAnimalPress} />}
+      </Tab.Screen>
       <Tab.Screen
         name="Wizyty"
         component={VisitsScreen}
         options={{
-          tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => renderTabIcon(Calendar, color, focused),
         }}
       />
       <Tab.Screen
         name="Profil"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color }) => <User size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => renderTabIcon(User, color, focused),
         }}
       />
     </Tab.Navigator>
