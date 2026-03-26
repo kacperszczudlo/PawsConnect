@@ -7,9 +7,17 @@ const TABS = [
   { key: 'favorites', label: 'Ulubione', Icon: Heart },
   { key: 'visits', label: 'Wizyty', Icon: Calendar },
   { key: 'profile', label: 'Profil', Icon: User },
-];
+] as const;
 
-export function BottomTabBar({ activeTab, onChange, hasVisitBadge = false }) {
+type TabKey = (typeof TABS)[number]['key'];
+
+interface BottomTabBarProps {
+  activeTab: TabKey;
+  onChange: (tab: TabKey) => void;
+  hasVisitBadge?: boolean;
+}
+
+export function BottomTabBar({ activeTab, onChange, hasVisitBadge = false }: BottomTabBarProps) {
   return (
     <View style={styles.wrapper}>
       {TABS.map(({ key, label, Icon }) => {
