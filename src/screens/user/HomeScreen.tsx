@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   MapPin,
   Search,
@@ -16,25 +18,61 @@ import {
   Heart,
   PawPrint,
 } from 'lucide-react-native';
-import { ANIMALS, CATEGORIES, Animal } from '../constants/mockData';
+import { CATEGORIES } from '../../constants/categories';
 import { FilterScreen } from './FilterScreen';
-import { useFavorites } from '../context/FavoritesContext';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { Animal, useShelterStore } from '../../store/useShelterStore';
+import { useFilterStore } from '../../store/useFilterStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { formatAgeBySex } from '../../utils/animalLabels';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
 }
 
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
+  const { animals, fetchAnimals, isLoading } = useShelterStore();
+  const { selectedCity, selectedType } = useFilterStore();
+  const user = useAuthStore((state) => state.user);
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+
+  const handleToggleFavorite = async (animalId: string) => {
+    const ok = await toggleFavorite(user?.id, animalId);
+    if (!ok) {
+      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+    }
+  };
+
+  useEffect(() => {
+    fetchAnimals();
+  }, [fetchAnimals]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchFavorites(user.id);
+    }
+  }, [fetchFavorites, user?.id]);
 
   if (showFilter) {
     return <FilterScreen onClose={() => setShowFilter(false)} />;
   }
 
-  const filteredAnimals = ANIMALS.filter((animal) => {
+  if (isLoading && animals.length === 0) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#f97316" />
+      </View>
+    );
+  }
+
+  const filteredAnimals = animals.filter((animal) => {
+    const matchesCity = selectedCity === 'Cała Polska' || animal.city === selectedCity;
+    const matchesType = !selectedType || animal.type === selectedType;
     const matchesCategory =
       activeCategory === 'Wszystkie' ||
       animal.type ===
@@ -47,7 +85,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
 
-    return matchesCategory && matchesSearch;
+    return matchesCity && matchesType && matchesCategory && matchesSearch;
   });
 
   const renderAnimalCard = ({ item }: { item: Animal }) => (
@@ -57,7 +95,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
         <View style={styles.cardHeader}>
           <Text style={styles.name}>{item.name}</Text>
           <TouchableOpacity
-            onPress={() => toggleFavorite(item.id)}
+            onPress={() => void handleToggleFavorite(item.id)}
             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
             <Heart
@@ -72,11 +110,11 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
         </Text>
         <View style={styles.tags}>
           <View style={styles.tagAge}>
-            <Text style={styles.tagAgeText}>{item.age}</Text>
+            <Text style={styles.tagAgeText}>{formatAgeBySex(item.age, item.sex ?? item.gender)}</Text>
           </View>
           <View style={styles.distanceTag}>
             <MapPin size={12} color="#94a3b8" />
-            <Text style={styles.tagDistanceText}>{item.distance}</Text>
+            <Text style={styles.tagDistanceText}>{item.distance ?? 'Schronisko'}</Text>
           </View>
         </View>
       </View>
@@ -91,7 +129,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
             <Text style={styles.locLabel}>TWOJA LOKALIZACJA</Text>
             <View style={styles.locRow}>
               <MapPin size={16} color="#f97316" />
-              <Text style={styles.locText}>Kraków, Polska</Text>
+              <Text style={styles.locText}>{selectedCity}</Text>
             </View>
           </View>
           <View style={styles.avatarBtn}>
@@ -160,6 +198,12 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
 };
 
 const styles = StyleSheet.create({
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
   container: { flex: 1, backgroundColor: '#f8fafc' },
   heroPanel: {
     backgroundColor: '#fff',

@@ -2,11 +2,11 @@ import React from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, Heart, Calendar, User } from 'lucide-react-native';
-import { HomeScreen } from '../screens/HomeScreen';
-import { FavoritesScreen } from '../screens/FavoritesScreen';
-import { VisitsScreen } from '../screens/VisitsScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
-import { Animal } from '../constants/mockData';
+import { HomeScreen } from '../screens/user/HomeScreen';
+import { FavoritesScreen } from '../screens/user/FavoritesScreen';
+import { VisitsScreen } from '../screens/user/VisitsScreen';
+import { ProfileScreen } from '../screens';
+import { Animal } from '../store/useShelterStore';
 
 const Tab = createBottomTabNavigator();
 
@@ -72,7 +72,7 @@ export const TabNavigator = ({ onAnimalPress }: TabNavigatorProps) => {
           tabBarIcon: ({ color, focused }) => renderTabIcon(Heart, color, focused),
         }}
       >
-        {() => <FavoritesScreen onAnimalPress={onAnimalPress} />}
+        {() => <FavoritesScreen />}
       </Tab.Screen>
       <Tab.Screen
         name="Wizyty"

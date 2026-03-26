@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { ChevronLeft, Send } from 'lucide-react-native';
-import { Animal } from '../constants/mockData';
+import { Animal } from '../../store/useShelterStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { supabase } from '../../services/supabase';
 
 interface Props {
   animal: Animal;
@@ -10,7 +12,47 @@ interface Props {
 }
 
 export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
+  const user = useAuthStore((state) => state.user);
   const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!user?.id) {
+      Alert.alert('Błąd', 'Musisz być zalogowany, aby wysłać wniosek.');
+      return;
+    }
+
+    if (!reason.trim()) {
+      Alert.alert('Uzupełnij formularz', 'Opisz proszę, dlaczego chcesz adoptować to zwierzę.');
+      return;
+    }
+
+    setLoading(true);
+    const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
+    const dateLabel = new Date().toLocaleDateString('pl-PL');
+
+    const { error } = await supabase.from('applications').insert([
+      {
+        animal_id: animal.id,
+        animal_name: animal.name,
+        applicant_id: user.id,
+        applicant_name: applicantName,
+        type: 'Adopcja',
+        date: dateLabel,
+        status: 'Oczekujące',
+      },
+    ]);
+
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Błąd', `Nie udało się wysłać wniosku: ${error.message}`);
+      return;
+    }
+
+    Alert.alert('Sukces', 'Wniosek adopcyjny został wysłany.');
+    onSuccess();
+  };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
@@ -50,7 +92,7 @@ export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#f97316' }]} onPress={onSuccess}>
+        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: '#f97316', opacity: loading ? 0.6 : 1 }]} onPress={handleSubmit} disabled={loading}>
           <Text style={styles.submitBtnText}>Wyślij wniosek</Text>
           <Send size={20} color="white" style={{ marginLeft: 10 }} />
         </TouchableOpacity>

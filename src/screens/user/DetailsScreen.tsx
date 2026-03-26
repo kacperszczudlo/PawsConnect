@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   Image, 
   StyleSheet, 
   ScrollView, 
-  TouchableOpacity, 
-  SafeAreaView 
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   ChevronLeft, 
   Heart, 
@@ -17,10 +18,12 @@ import {
   Clock, 
   CalendarCheck 
 } from 'lucide-react-native';
-import { Animal } from '../constants/mockData';
+import { Animal } from '../../store/useShelterStore';
 import { WalkReservationScreen } from './WalkReservationScreen';
 import { AdoptionFormScreen } from './AdoptionFormScreen';
-import { useFavorites } from '../context/FavoritesContext';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { formatAgeBySex } from '../../utils/animalLabels';
 
 interface DetailsScreenProps {
   animal: Animal;
@@ -29,7 +32,27 @@ interface DetailsScreenProps {
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
-  const { isFavorite, toggleFavorite } = useFavorites();
+  const user = useAuthStore((state) => state.user);
+  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
+  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+
+  const handleToggleFavorite = async () => {
+    const ok = await toggleFavorite(user?.id, animal.id);
+    if (!ok) {
+      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+    }
+  };
+
+  const formattedAge = formatAgeBySex(animal.age, animal.sex ?? animal.gender);
+
+  const locationText = animal.city ? `Schronisko • ${animal.city}` : 'Schronisko';
+
+  useEffect(() => {
+    if (user?.id) {
+      void fetchFavorites(user.id);
+    }
+  }, [fetchFavorites, user?.id]);
 
   if (subScreen === 'walk') {
     return <WalkReservationScreen animal={animal} onBack={() => setSubScreen(null)} onSuccess={() => setSubScreen(null)} />;
@@ -40,7 +63,6 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 
   return (
     <View style={styles.container}>
-      {/* Zdjęcie z przyciskami na górze */}
       <View style={styles.imageContainer}>
         <Image source={{ uri: animal.image }} style={styles.mainImage} />
         <SafeAreaView style={styles.headerButtons}>
@@ -51,7 +73,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <TouchableOpacity style={styles.iconBtn}>
               <Share2 size={20} color="#1e293b" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => toggleFavorite(animal.id)}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => void handleToggleFavorite()}>
               <Heart
                 size={20}
                 color={isFavorite(animal.id) ? '#f97316' : '#1e293b'}
@@ -67,37 +89,35 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
           <View style={styles.rowBetween}>
             <Text style={styles.name}>{animal.name}</Text>
             <View style={styles.genderTag}>
-              <Text style={styles.genderText}>{animal.gender}</Text>
+              <Text style={styles.genderText}>{animal.sex ?? animal.gender ?? 'Nieznana płeć'}</Text>
             </View>
           </View>
           
           <View style={styles.locationRow}>
             <MapPin size={16} color="#94a3b8" />
-            <Text style={styles.locationText}>Schronisko "Psi Los", Kraków</Text>
+            <Text style={styles.locationText}>{locationText}</Text>
           </View>
 
-          {/* Statystyki: Wiek, Waga, Kolor */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Wiek</Text>
-              <Text style={styles.statValue}>{animal.age}</Text>
+              <Text style={styles.statValue}>{formattedAge}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Waga</Text>
-              <Text style={styles.statValue}>{animal.weight}</Text>
+              <Text style={styles.statValue}>{animal.weight ?? 'Brak danych'}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Kolor</Text>
-              <Text style={styles.statValue}>{animal.color}</Text>
+              <Text style={styles.statValue}>{animal.color ?? 'Brak danych'}</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>O mnie</Text>
-          <Text style={styles.description}>{animal.description}</Text>
+          <Text style={styles.description}>{animal.description ?? 'Opis zostanie uzupełniony wkrótce.'}</Text>
 
-          {/* Szybkie info */}
           <View style={styles.infoBox}>
             <Info size={20} color="#f97316" />
             <Text style={styles.infoBoxText}>
@@ -107,7 +127,6 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
         </View>
       </ScrollView>
 
-      {/* Dolny panel z przyciskami akcji */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.walkBtn} onPress={() => setSubScreen('walk')}>
           <Clock size={20} color="#f97316" />

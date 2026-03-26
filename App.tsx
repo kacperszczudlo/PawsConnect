@@ -1,44 +1,67 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { TabNavigator } from './src/navigation/TabNavigator';
-import { LoginScreen } from './src/screens/LoginScreen';
-import { RegisterScreen } from './src/screens/RegisterScreen';
-import { DetailsScreen } from './src/screens/DetailsScreen';
-import { Animal } from './src/constants/mockData';
-import { FavoritesProvider } from './src/context/FavoritesContext';
+
+import { AdminStack } from './src/navigation/AdminStack';
+import AuthStack from './src/navigation/AuthStack';
+import { DetailsScreen } from './src/screens/user/DetailsScreen';
+import { UserStack } from './src/navigation/UserStack';
+
+import { Animal } from './src/store/useShelterStore';
+import { supabase } from './src/services/supabase';
+import { useAuthStore } from './src/store/useAuthStore';
 
 export default function App() {
-  const [authScreen, setAuthScreen] = useState<'login' | 'register'>('login');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { session, setSession, setUser, isLoading, setLoading, role } = useAuthStore();
+  
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
+
+  useEffect(() => {
+    setLoading(true);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setLoading, setSession, setUser]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      {!isAuthenticated ? (
-        authScreen === 'login' ? (
-          <LoginScreen
-            onLoginPress={handleLogin}
-            onRegisterPress={() => setAuthScreen('register')}
-          />
-        ) : (
-          <RegisterScreen onLoginPress={() => setAuthScreen('login')} />
-        )
-      ) : (
-        <FavoritesProvider>
-          {selectedAnimal ? (
-            <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
+      <NavigationContainer>
+        {session?.user ? (
+          role === 'admin' ? (
+            <AdminStack />
           ) : (
-            <NavigationContainer>
-              <TabNavigator onAnimalPress={setSelectedAnimal} />
-            </NavigationContainer>
-          )}
-        </FavoritesProvider>
-      )}
+            selectedAnimal ? (
+              <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
+            ) : (
+              <UserStack onAnimalPress={setSelectedAnimal} />
+            )
+          )
+        ) : (
+          <AuthStack />
+        )}
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }

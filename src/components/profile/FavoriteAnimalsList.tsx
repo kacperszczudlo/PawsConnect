@@ -1,23 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ANIMALS, Animal } from '../../constants/mockData';
-import { useFavorites } from '../../context/FavoritesContext';
+import { Animal, useShelterStore } from '../../store/useShelterStore';
+import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface FavoriteAnimalsListProps {
   onAnimalPress?: (animal: Animal) => void;
 }
 
 export const FavoriteAnimalsList = ({ onAnimalPress }: FavoriteAnimalsListProps) => {
-  const { favoriteIds } = useFavorites();
+  const user = useAuthStore((state) => state.user);
+  const { animals, fetchAnimals } = useShelterStore();
+  const favorites = useFavoritesStore((state) => state.favorites);
+  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
 
-  const favorites = useMemo(
-    () => ANIMALS.filter((animal) => favoriteIds.includes(animal.id)),
-    [favoriteIds],
+  useEffect(() => {
+    void fetchAnimals();
+    if (user?.id) {
+      void fetchFavorites(user.id);
+    }
+  }, [fetchAnimals, fetchFavorites, user?.id]);
+
+  const favoriteAnimals = useMemo(
+    () => animals.filter((animal) => favorites.includes(animal.id)),
+    [animals, favorites],
   );
 
   return (
     <FlatList
-      data={favorites}
+      data={favoriteAnimals}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}

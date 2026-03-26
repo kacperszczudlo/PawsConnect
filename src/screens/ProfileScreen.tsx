@@ -1,342 +1,222 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View, Image, ScrollView } from 'react-native';
-import { Camera, ChevronLeft, LogOut, Settings } from 'lucide-react-native';
-import { EditProfileForm } from '../components/profile/EditProfileForm';
-import { FavoriteAnimalsList } from '../components/profile/FavoriteAnimalsList';
-import { ProfileMenuList } from '../components/profile/ProfileMenuList';
-import { VisitsList } from '../components/visits/VisitsList';
-import { useProfile } from '../hooks/useProfile';
-import { ProfileSection, UserProfile } from '../types/profile';
-
-const SECTION_TITLE_MAP: Record<ProfileSection, string> = {
-  overview: 'Profil',
-  edit: 'Edycja danych',
-  myVisits: 'Moje wizyty',
-  upcoming: 'Nadchodzące wizyty',
-  favorites: 'Ulubione',
-  history: 'Historia',
-};
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { MapPin, Mail, Phone, LogOut, Settings } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useAuthStore } from '../store/useAuthStore';
 
 export const ProfileScreen = () => {
-  const { profile, isLoading, isSaving, error, loadProfile, saveProfile } = useProfile();
-  const [section, setSection] = useState<ProfileSection>('overview');
-  const [draft, setDraft] = useState<UserProfile | null>(null);
+  const navigation = useNavigation<any>();
+  const { user, role, signOut } = useAuthStore();
 
-  useEffect(() => {
-    if (profile) {
-      setDraft(profile);
-    }
-  }, [profile]);
+  const isShelter = role === 'admin';
 
-  const canGoBack = section !== 'overview';
+  const displayName = isShelter
+    ? user?.user_metadata?.shelter_name || 'Nieznane schronisko'
+    : user?.user_metadata?.full_name || 'Nieznany użytkownik';
 
-  const handleGoBack = useCallback(() => {
-    setSection('overview');
-  }, []);
+  const city = user?.user_metadata?.city || 'Nie podano miasta';
+  const phone = user?.user_metadata?.phone || 'Brak telefonu';
+  const email = user?.email || 'Brak maila';
 
-  const handleChangeDraft = useCallback(
-    <K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
-      setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
-    },
-    [],
-  );
-
-  const handleSaveProfile = useCallback(async () => {
-    if (!draft) {
-      return;
-    }
-
-    const success = await saveProfile(draft);
-    if (success) {
-      setSection('overview');
-    }
-  }, [draft, saveProfile]);
-
-  const sectionTitle = useMemo(() => SECTION_TITLE_MAP[section], [section]);
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.containerCentered}>
-        <Text style={styles.loadingText}>Ładowanie profilu...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  if (!profile || !draft) {
-    return (
-      <SafeAreaView style={styles.containerCentered}>
-        <Text style={styles.errorText}>{error ?? 'Brak danych profilu.'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={loadProfile}>
-          <Text style={styles.retryBtnText}>Spróbuj ponownie</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  const badgeText = isShelter ? 'Konto Schroniska' : 'Wolontariusz';
+  const badgeColor = isShelter ? '#10b981' : '#f97316';
+  const headerColor = isShelter ? '#1e293b' : '#f97316';
 
   return (
-    <SafeAreaView style={styles.container}>
-      {section === 'overview' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.hero}>
-            <View style={styles.heroTopRow}>
-              <Text style={styles.heroTitle}>Twój Profil</Text>
-              <TouchableOpacity style={styles.settingsBtn} onPress={() => setSection('edit')}>
-                <Settings size={18} color="#f97316" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatarRing}>
-                <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-              </View>
-              <TouchableOpacity style={styles.cameraBtn}>
-                <Camera size={14} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.heroName}>{profile.fullName}</Text>
-            <Text style={styles.heroSubtitle}>Wolontariusz PawsConnect</Text>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>SPACERY</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>1</Text>
-              <Text style={styles.statLabel}>ADOPCJE</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>45h</Text>
-              <Text style={styles.statLabel}>POMOCY</Text>
-            </View>
-          </View>
-
-          <ProfileMenuList onSelect={setSection} />
-
-          <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.9}>
-            <LogOut size={18} color="#ef4444" />
-            <Text style={styles.logoutText}>Wyloguj się</Text>
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <View
+        style={{
+          backgroundColor: headerColor,
+          paddingHorizontal: 24,
+          paddingTop: 64,
+          paddingBottom: 40,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 3,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+          }}
+        >
+          <Text style={{ fontSize: 24, fontWeight: '800', color: 'white' }}>
+            {isShelter ? 'Panel Pracownika' : 'Twój Profil'}
+          </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Settings')}
+            style={{
+              width: 40,
+              height: 40,
+              backgroundColor: 'rgba(255,255,255,0.1)',
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <Settings size={20} color="white" />
           </TouchableOpacity>
-        </ScrollView>
-      ) : (
-        <View style={styles.subSectionContainer}>
-          <View style={styles.header}>
-            {canGoBack ? (
-              <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
-                <ChevronLeft size={20} color="#1e293b" />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.backBtnPlaceholder} />
-            )}
+        </View>
 
-            <Text style={styles.title}>{sectionTitle}</Text>
-            <View style={styles.backBtnPlaceholder} />
+        <View style={{ alignItems: 'center' }}>
+          <View
+            style={{
+              width: 96,
+              height: 96,
+              backgroundColor: 'white',
+              borderRadius: 48,
+              padding: 4,
+              marginBottom: 16,
+            }}
+          >
+            <Image
+              source={{
+                uri:
+                  user?.user_metadata?.avatar_url ||
+                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=250&q=80',
+              }}
+              style={{ width: '100%', height: '100%', borderRadius: 48, resizeMode: 'cover' }}
+            />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{displayName}</Text>
+
+          <View
+            style={{
+              backgroundColor: badgeColor,
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 16,
+              marginTop: 8,
+            }}
+          >
+            <Text
+              style={{
+                color: 'white',
+                fontSize: 12,
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {badgeText}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1, paddingHorizontal: 24, paddingTop: 32 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        <View
+          style={{
+            backgroundColor: 'white',
+            borderRadius: 24,
+            padding: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 1,
+            elevation: 1,
+            borderWidth: 1,
+            borderColor: '#f1f5f9',
+            marginBottom: 24,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginLeft: 4,
+              marginBottom: 6,
+            }}
+          >
+            {isShelter ? 'Lokalizacja' : 'Twoje Miasto'}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            <MapPin size={16} color="#94a3b8" />
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+              {city}
+            </Text>
           </View>
 
-          {error ? <Text style={styles.errorInline}>{error}</Text> : null}
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginLeft: 4,
+              marginBottom: 6,
+            }}
+          >
+            {isShelter ? 'Służbowy adres e-mail' : 'Adres e-mail'}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            <Mail size={16} color="#94a3b8" />
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+              {email}
+            </Text>
+          </View>
 
-          {section === 'edit' ? (
-            <EditProfileForm
-              profile={draft}
-              isSaving={isSaving}
-              onChange={handleChangeDraft}
-              onSave={handleSaveProfile}
-              onCancel={handleGoBack}
-            />
-          ) : null}
-
-          {section === 'myVisits' ? <VisitsList mode="all" /> : null}
-          {section === 'upcoming' ? <VisitsList mode="upcoming" /> : null}
-          {section === 'history' ? <VisitsList mode="history" /> : null}
-          {section === 'favorites' ? <FavoriteAnimalsList /> : null}
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginLeft: 4,
+              marginBottom: 6,
+            }}
+          >
+            Telefon kontaktowy
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Phone size={16} color="#94a3b8" />
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+              {phone}
+            </Text>
+          </View>
         </View>
-      )}
-    </SafeAreaView>
+
+        <TouchableOpacity
+          onPress={async () => {
+            await signOut();
+          }}
+          style={{
+            width: '100%',
+            backgroundColor: 'white',
+            borderRadius: 16,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: '#fee2e2',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 1,
+            elevation: 1,
+          }}
+        >
+          <LogOut size={20} color="#ef4444" />
+          <Text style={{ fontWeight: 'bold', color: '#ef4444', fontSize: 14, marginLeft: 8 }}>
+            Wyloguj się z systemu
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  hero: {
-    backgroundColor: '#f97316',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    alignItems: 'center',
-  },
-  heroTitle: {
-    color: '#fff',
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  heroTopRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  settingsBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarWrap: {
-    marginTop: 18,
-    position: 'relative',
-  },
-  avatarRing: {
-    width: 98,
-    height: 98,
-    borderRadius: 49,
-    backgroundColor: '#fff',
-    padding: 4,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 45,
-  },
-  cameraBtn: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#ea580c',
-    borderWidth: 2,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroName: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  heroSubtitle: {
-    color: '#fed7aa',
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    marginTop: -18,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statValue: {
-    color: '#f97316',
-    fontWeight: '800',
-    fontSize: 22,
-  },
-  statLabel: {
-    marginTop: 2,
-    color: '#64748b',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  logoutBtn: {
-    marginTop: 16,
-    marginHorizontal: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontWeight: '800',
-  },
-  subSectionContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  containerCentered: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  backBtnPlaceholder: {
-    width: 40,
-    height: 40,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#b91c1c',
-    marginBottom: 10,
-  },
-  errorInline: {
-    color: '#b91c1c',
-    marginBottom: 8,
-  },
-  retryBtn: {
-    backgroundColor: '#f97316',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  retryBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-});

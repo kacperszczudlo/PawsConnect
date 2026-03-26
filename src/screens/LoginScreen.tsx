@@ -7,8 +7,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { supabase } from '../services/supabase';
+import { useNavigation } from '@react-navigation/native';
 
 type LoginScreenProps = {
   onRegisterPress?: () => void;
@@ -22,9 +26,30 @@ export const LoginScreen = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigation = useNavigation<any>();
 
-  const handleLogin = () => {
-    onLoginPress?.();
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Błąd', 'Proszę wypełnić wszystkie pola');
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setLoading(false);
+
+    if (error) {
+      Alert.alert('Błąd logowania', error.message);
+    } else {
+      Alert.alert('Sukces', 'Zostałeś zalogowany!');
+      if (onLoginPress) {
+        onLoginPress();
+      }
+    }
   };
 
   return (
@@ -81,13 +106,17 @@ export const LoginScreen = ({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Zaloguj się</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Zaloguj się</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Nie masz konta? </Text>
-          <TouchableOpacity onPress={onRegisterPress}>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.linkText}>Zarejestruj się</Text>
           </TouchableOpacity>
         </View>
