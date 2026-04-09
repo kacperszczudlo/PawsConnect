@@ -16,13 +16,15 @@ import {
   MapPin, 
   Info, 
   Clock, 
-  CalendarCheck 
+  CalendarCheck,
+  PawPrint,
 } from 'lucide-react-native';
 import { Animal } from '../../store/useShelterStore';
 import { WalkReservationScreen } from './WalkReservationScreen';
 import { AdoptionFormScreen } from './AdoptionFormScreen';
 import { useFavoritesStore } from '../../store/useFavoritesStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { supabase } from '../../services/supabase';
 import { formatAgeBySex } from '../../utils/animalLabels';
 
 interface DetailsScreenProps {
@@ -32,10 +34,61 @@ interface DetailsScreenProps {
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
+  const [currentAnimal, setCurrentAnimal] = useState(animal);
   const user = useAuthStore((state) => state.user);
-  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const favorites = useFavoritesStore((state) => state.favorites);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+
+  useEffect(() => {
+    setCurrentAnimal(animal);
+  }, [animal]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAnimal = async () => {
+      try {
+        const { data } = await supabase
+          .from('animals')
+          .select('id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color')
+          .eq('id', animal.id)
+          .maybeSingle();
+
+        if (active && data) {
+          setCurrentAnimal({
+            id: String(data.id),
+            name: data.name ?? animal.name,
+            city: data.city ?? data.shelter_city ?? animal.city,
+            shelterName: data.shelterName ?? data.shelter_name ?? animal.shelterName,
+            shelterAddress: data.shelterAddress ?? data.shelter_address ?? animal.shelterAddress,
+            shelterPhone: data.shelterPhone ?? data.shelter_phone ?? animal.shelterPhone,
+            shelterEmail: data.shelterEmail ?? data.shelter_email ?? animal.shelterEmail,
+            type: data.type ?? animal.type,
+            breed: data.breed ?? animal.breed,
+            age: data.age ?? animal.age,
+            description: data.description ?? animal.description,
+            image: data.image ?? animal.image,
+            sex: data.sex ?? animal.sex,
+            liked: data.liked ?? animal.liked,
+            gender: data.gender ?? animal.gender,
+            weight: data.weight ?? animal.weight,
+            color: data.color ?? animal.color,
+          });
+        }
+      } catch {
+        if (active) {
+          setCurrentAnimal((prev) => ({ ...prev }));
+        }
+      }
+    };
+
+    void loadAnimal();
+
+    return () => {
+      active = false;
+    };
+  }, [animal]);
 
   const handleToggleFavorite = async () => {
     const ok = await toggleFavorite(user?.id, animal.id);
@@ -44,9 +97,11 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
     }
   };
 
-  const formattedAge = formatAgeBySex(animal.age, animal.sex ?? animal.gender);
+  const formattedAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
 
-  const locationText = animal.city ? `Schronisko • ${animal.city}` : 'Schronisko';
+  const locationText = currentAnimal.shelterName && currentAnimal.shelterAddress
+    ? `${currentAnimal.shelterName} • ${currentAnimal.shelterAddress}`
+    : currentAnimal.shelterName || (currentAnimal.city ? `Schronisko • ${currentAnimal.city}` : 'Schronisko');
 
   useEffect(() => {
     if (user?.id) {
@@ -64,7 +119,13 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: animal.image }} style={styles.mainImage} />
+        {currentAnimal.image ? (
+          <Image source={{ uri: currentAnimal.image }} style={styles.mainImage} />
+        ) : (
+          <View style={styles.mainImagePlaceholder}>
+            <PawPrint size={44} color="#94a3b8" />
+          </View>
+        )}
         <SafeAreaView style={styles.headerButtons}>
           <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
             <ChevronLeft size={24} color="#1e293b" />
@@ -76,8 +137,8 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <TouchableOpacity style={styles.iconBtn} onPress={() => void handleToggleFavorite()}>
               <Heart
                 size={20}
-                color={isFavorite(animal.id) ? '#f97316' : '#1e293b'}
-                fill={isFavorite(animal.id) ? '#f97316' : 'none'}
+                color={favorites.includes(animal.id) ? '#f97316' : '#1e293b'}
+                fill={favorites.includes(animal.id) ? '#f97316' : 'none'}
               />
             </TouchableOpacity>
           </View>
@@ -87,15 +148,27 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <View style={styles.rowBetween}>
-            <Text style={styles.name}>{animal.name}</Text>
+            <Text style={styles.name}>{currentAnimal.name}</Text>
             <View style={styles.genderTag}>
-              <Text style={styles.genderText}>{animal.sex ?? animal.gender ?? 'Nieznana płeć'}</Text>
+              <Text style={styles.genderText}>{currentAnimal.sex ?? currentAnimal.gender ?? 'Nieznana płeć'}</Text>
             </View>
           </View>
           
           <View style={styles.locationRow}>
             <MapPin size={16} color="#94a3b8" />
             <Text style={styles.locationText}>{locationText}</Text>
+          </View>
+
+          <View style={styles.contactCard}>
+            <Text style={styles.sectionTitle}>Kontakt i miejsce odbioru</Text>
+            <Text style={styles.contactText}>Telefon: {currentAnimal.shelterPhone ?? 'Brak danych'}</Text>
+            <Text style={styles.contactText}>E-mail: {currentAnimal.shelterEmail ?? 'Brak danych'}</Text>
+            <Text style={styles.contactText}>
+              Adres: {currentAnimal.shelterAddress ?? currentAnimal.city ?? 'Brak danych'}
+            </Text>
+            <Text style={styles.contactHint}>
+              Skontaktuj się przed przyjazdem, żeby potwierdzić godzinę wizyty lub odbioru.
+            </Text>
           </View>
 
           <View style={styles.statsRow}>
@@ -116,7 +189,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
           <View style={styles.divider} />
 
           <Text style={styles.sectionTitle}>O mnie</Text>
-          <Text style={styles.description}>{animal.description ?? 'Opis zostanie uzupełniony wkrótce.'}</Text>
+          <Text style={styles.description}>{currentAnimal.description ?? 'Opis zostanie uzupełniony wkrótce.'}</Text>
 
           <View style={styles.infoBox}>
             <Info size={20} color="#f97316" />
@@ -145,6 +218,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   imageContainer: { height: 320, position: 'relative' },
   mainImage: { width: '100%', height: '100%' },
+  mainImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerButtons: { 
     position: 'absolute', 
     top: 20, 
@@ -201,6 +281,16 @@ const styles = StyleSheet.create({
     borderColor: '#ffedd5'
   },
   infoBoxText: { color: '#c2410c', fontSize: 13, marginLeft: 10, flex: 1, fontWeight: '500' },
+  contactCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  contactText: { color: '#334155', marginTop: 6, fontSize: 14 },
+  contactHint: { color: '#64748b', marginTop: 10, fontSize: 13, lineHeight: 18 },
   footer: { 
     position: 'absolute', 
     bottom: 0, 

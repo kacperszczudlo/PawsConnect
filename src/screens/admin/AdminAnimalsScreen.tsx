@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Plus, Trash2, Pencil, PawPrint } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useShelterStore } from '../../store/useShelterStore';
+import { useCallback } from 'react';
 
 export const AdminAnimalsScreen = () => {
   const navigation = useNavigation();
@@ -11,6 +13,12 @@ export const AdminAnimalsScreen = () => {
   useEffect(() => {
     fetchAnimals();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchAnimals();
+    }, [fetchAnimals]),
+  );
 
   if (isLoading && animals.length === 0) {
     return (
@@ -42,19 +50,31 @@ export const AdminAnimalsScreen = () => {
 
         {animals.map((animal) => (
           <View key={animal.id} style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 1, elevation: 1, borderWidth: 1, borderColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center' }}>
-            <Image source={{ uri: animal.image }} style={{ width: 80, height: 80, borderRadius: 16, marginRight: 16, resizeMode: 'cover' }} />
+            {animal.image ? (
+              <Image source={{ uri: animal.image }} resizeMode="cover" style={{ width: 80, height: 80, borderRadius: 16, marginRight: 16 }} />
+            ) : (
+              <View style={{ width: 80, height: 80, borderRadius: 16, marginRight: 16, backgroundColor: '#e2e8f0', alignItems: 'center', justifyContent: 'center' }}>
+                <PawPrint size={24} color="#94a3b8" />
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '800', color: '#1e293b', fontSize: 18 }}>{animal.name}</Text>
               <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '500', marginBottom: 8 }}>{animal.type} • {animal.breed}</Text>
+              <Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: '500', marginBottom: 4 }}>{animal.shelterName ?? 'Schronisko'} • {animal.shelterAddress ?? animal.city ?? 'Brak lokalizacji'}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
                   <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#059669' }}>{animal.age}</Text>
                 </View>
               </View>
             </View>
-            <TouchableOpacity onPress={() => removeAnimal(animal.id)} style={{ padding: 12, backgroundColor: '#fee2e2', borderRadius: 12 }}>
-              <Trash2 size={20} color="#ef4444" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => (navigation as any).navigate('AddAnimal', { animal })} style={{ padding: 12, backgroundColor: '#e0f2fe', borderRadius: 12 }}>
+                <Pencil size={20} color="#0284c7" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => removeAnimal(animal.id)} style={{ padding: 12, backgroundColor: '#fee2e2', borderRadius: 12 }}>
+                <Trash2 size={20} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
           </View>
         ))}
       </ScrollView>

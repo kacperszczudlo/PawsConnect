@@ -1,21 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Calendar, Clock, CheckCircle2, XCircle, Timer } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
+import { Animal } from '../../store/useShelterStore';
 
 interface UserApplication {
   id: string;
+  animal_id: string;
   type: string;
   animal_name: string;
   date: string;
   status: 'Oczekujące' | 'Zaakceptowane' | 'Odrzucone';
   created_at: string;
+  shelter_name?: string;
+  shelter_address?: string;
+  shelter_phone?: string;
+  shelter_email?: string;
 }
 
 export const VisitsScreen = () => {
   const { user } = useAuthStore();
   const [visits, setVisits] = useState<UserApplication[]>([]);
+  const [animalsById, setAnimalsById] = useState<Record<string, Animal>>({});
   const [mode, setMode] = useState<'upcoming' | 'history'>('upcoming');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,14 +36,37 @@ export const VisitsScreen = () => {
       return;
     }
 
-    const { data, error } = await supabase
-      .from('applications')
-      .select('*')
-      .eq('applicant_id', user.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('applicant_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setVisits(data);
+      if (!error && data) {
+        setVisits(data);
+
+        const animalIds = Array.from(new Set(data.map((item) => item.animal_id).filter(Boolean)));
+        if (animalIds.length > 0) {
+          const { data: animalsData } = await supabase
+            .from('animals')
+            .select('id,city,shelter_name,shelter_address,shelter_phone,shelter_email')
+            .in('id', animalIds);
+
+          if (animalsData) {
+            const map: Record<string, Animal> = {};
+            animalsData.forEach((animal: Animal) => {
+              map[animal.id] = animal;
+            });
+            setAnimalsById(map);
+          }
+        } else {
+          setAnimalsById({});
+        }
+      }
+    } catch {
+      setVisits([]);
+      setAnimalsById({});
     }
     setLoading(false);
     setRefreshing(false);
@@ -43,6 +74,38 @@ export const VisitsScreen = () => {
 
   useEffect(() => {
     void fetchUserVisits();
+  }, [user?.id]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void fetchUserVisits();
+    }, [user?.id]),
+  );
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`user-applications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+          filter: `applicant_id=eq.${user.id}`,
+        },
+        () => {
+          void fetchUserVisits();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const onRefresh = () => {
@@ -165,6 +228,11 @@ export const VisitsScreen = () => {
         ) : (
           filteredVisits.map((visit) => {
             const style = getStatusStyle(visit.status);
+            const linkedAnimal = animalsById[visit.animal_id];
+            const shelterName = visit.shelter_name ?? linkedAnimal?.shelterName ?? linkedAnimal?.city;
+            const shelterAddress = visit.shelter_address ?? linkedAnimal?.shelterAddress ?? linkedAnimal?.city;
+            const shelterPhone = visit.shelter_phone ?? linkedAnimal?.shelterPhone;
+            const shelterEmail = visit.shelter_email ?? linkedAnimal?.shelterEmail;
             return (
               <View
                 key={visit.id}
@@ -218,6 +286,18 @@ export const VisitsScreen = () => {
                   >
                     <Text style={{ fontSize: 12, color: '#0369a1', fontWeight: '500' }}>
                       Pamiętaj o zabraniu dokumentu tożsamości. Do zobaczenia!
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#075985', marginTop: 8, fontWeight: '600' }}>
+                      {shelterName ? `Schronisko: ${shelterName}` : 'Schronisko: Brak danych'}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#075985', marginTop: 8, fontWeight: '600' }}>
+                      Miejsce: {shelterAddress ?? 'Brak adresu'}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#075985', marginTop: 4 }}>
+                      Telefon: {shelterPhone ?? 'Brak telefonu'}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#075985', marginTop: 2 }}>
+                      E-mail: {shelterEmail ?? 'Brak e-maila'}
                     </Text>
                   </View>
                 )}

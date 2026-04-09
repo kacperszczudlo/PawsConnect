@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { ChevronLeft, Send } from 'lucide-react-native';
+import { ChevronLeft, Send, PawPrint } from 'lucide-react-native';
 import { Animal } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
+
+const buildShelterSnapshot = (animal: Animal) => ({
+  shelter_name: animal.shelterName ?? '',
+  shelter_address: animal.shelterAddress ?? animal.city ?? '',
+  shelter_phone: animal.shelterPhone ?? '',
+  shelter_email: animal.shelterEmail ?? '',
+});
 
 interface Props {
   animal: Animal;
@@ -59,7 +66,6 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
 
     setLoading(true);
     const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
-
     const { error } = await supabase.from('applications').insert([
       {
         animal_id: animal.id,
@@ -69,6 +75,7 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
         type: 'Spacer',
         date: `${date} ${time}`,
         status: 'Oczekujące',
+        ...buildShelterSnapshot(animal),
       },
     ]);
 
@@ -94,10 +101,18 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.animalSummary}>
-          <Image source={{ uri: animal.image }} style={styles.animalThumb} />
+          {animal.image ? (
+            <Image source={{ uri: animal.image }} style={styles.animalThumb} />
+          ) : (
+            <View style={[styles.animalThumb, styles.animalThumbPlaceholder]}>
+              <PawPrint size={24} color="#94a3b8" />
+            </View>
+          )}
           <View>
             <Text style={styles.animalName}>{animal.name}</Text>
             <Text style={styles.animalBreed}>{animal.type} • {animal.breed}</Text>
+            <Text style={styles.animalMeta}>{animal.shelterName ?? 'Schronisko'}</Text>
+            <Text style={styles.animalMeta}>{animal.shelterAddress ?? animal.city ?? 'Brak lokalizacji'}</Text>
           </View>
         </View>
 
@@ -167,8 +182,14 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   animalThumb: { width: 60, height: 60, borderRadius: 14 },
+  animalThumbPlaceholder: {
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   animalName: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
   animalBreed: { fontSize: 13, color: '#64748b', marginTop: 3 },
+  animalMeta: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
   section: { marginBottom: 25 },
   label: {
     fontSize: 11,

@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../services/supabase';
 import type { AuthStackParamList } from '../navigation/AuthStack';
 import { CityPickerField } from '../components/CityPickerField';
+import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
 
 type RoleType = 'user' | 'admin';
 
@@ -30,6 +31,8 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
   const [name, setName] = useState('');
   const [shelterName, setShelterName] = useState('');
   const [city, setCity] = useState('');
+  const [shelterStreet, setShelterStreet] = useState('');
+  const [shelterPostalCode, setShelterPostalCode] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -48,24 +51,45 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
 
   const handleRegister = async () => {
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPhone = phone.trim();
+    const normalizedPhone = normalizePhone(phone);
     const normalizedPassword = password.trim();
     const normalizedName = name.trim();
     const normalizedShelterName = shelterName.trim();
     const normalizedCity = city.trim();
+    const normalizedShelterStreet = shelterStreet.trim();
+    const normalizedShelterPostalCode = normalizePostalCode(shelterPostalCode);
 
     const hasMissingUserFields = roleType === 'user' && !normalizedName;
-    const hasMissingAdminFields = roleType === 'admin' && (!normalizedShelterName || !normalizedCity);
+    const hasMissingAdminFields =
+      roleType === 'admin' &&
+      (!normalizedShelterName || !normalizedCity || !normalizedShelterStreet || !normalizedShelterPostalCode);
 
     if (!normalizedEmail || !normalizedPassword || !normalizedPhone || hasMissingUserFields || hasMissingAdminFields) {
       Alert.alert('Błąd', 'Proszę wypełnić wszystkie pola');
       return;
     }
 
+    if (!isValidPhone(normalizedPhone)) {
+      Alert.alert('Błąd', 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).');
+      return;
+    }
+
+    if (roleType === 'admin' && !isValidPostalCode(normalizedShelterPostalCode)) {
+      Alert.alert('Błąd', 'Podaj poprawny kod pocztowy w formacie 00-000.');
+      return;
+    }
+
     setLoading(true);
     try {
       const metadata = roleType === 'admin'
-        ? { role: 'admin', shelter_name: normalizedShelterName, city: normalizedCity, phone: normalizedPhone }
+        ? {
+            role: 'admin',
+            shelter_name: normalizedShelterName,
+            city: normalizedCity,
+            shelter_street: normalizedShelterStreet,
+            shelter_postal_code: normalizedShelterPostalCode,
+            phone: normalizedPhone,
+          }
         : { role: 'user', full_name: normalizedName, phone: normalizedPhone };
 
       const { error } = await supabase.auth.signUp({
@@ -165,6 +189,39 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
 
           {roleType === 'admin' ? (
             <CityPickerField value={city} onChange={setCity} label="MIASTO" />
+          ) : null}
+
+          {roleType === 'admin' ? (
+            <>
+              <View style={styles.inputLabel}>
+                <Text style={styles.labelText}>ULICA I NUMER</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <MapPin color="#94a3b8" size={20} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="np. Leśna 10"
+                  placeholderTextColor="#94a3b8"
+                  value={shelterStreet}
+                  onChangeText={setShelterStreet}
+                />
+              </View>
+
+              <View style={styles.inputLabel}>
+                <Text style={styles.labelText}>KOD POCZTOWY</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <MapPin color="#94a3b8" size={20} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="np. 00-000"
+                  placeholderTextColor="#94a3b8"
+                  value={shelterPostalCode}
+                  onChangeText={setShelterPostalCode}
+                  keyboardType="number-pad"
+                />
+              </View>
+            </>
           ) : null}
 
           <View style={styles.inputLabel}>

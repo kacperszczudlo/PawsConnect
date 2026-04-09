@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { MapPin, Mail, Phone, LogOut, Settings } from 'lucide-react-native';
+import { MapPin, Mail, Phone, LogOut, Settings, Home, User } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -17,6 +17,7 @@ export const ProfileScreen = () => {
   const city = user?.user_metadata?.city || 'Nie podano miasta';
   const phone = user?.user_metadata?.phone || 'Brak telefonu';
   const email = user?.email || 'Brak maila';
+  const avatarUrl = user?.user_metadata?.avatar_url?.trim() || '';
 
   const badgeText = isShelter ? 'Konto Schroniska' : 'Wolontariusz';
   const badgeColor = isShelter ? '#10b981' : '#f97316';
@@ -78,14 +79,26 @@ export const ProfileScreen = () => {
               marginBottom: 16,
             }}
           >
-            <Image
-              source={{
-                uri:
-                  user?.user_metadata?.avatar_url ||
-                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=250&q=80',
-              }}
-              style={{ width: '100%', height: '100%', borderRadius: 48, resizeMode: 'cover' }}
-            />
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                resizeMode="cover"
+                style={{ width: '100%', height: '100%', borderRadius: 48 }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 48,
+                  backgroundColor: 'white',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {isShelter ? <Home size={38} color="#94a3b8" /> : <User size={38} color="#94a3b8" />}
+              </View>
+            )}
           </View>
           <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{displayName}</Text>
 

@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { ChevronLeft, Camera } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { useShelterStore } from '../../store/useShelterStore';
+import { Animal, useShelterStore } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { uploadAnimalImage } from '../../services/imageService';
 
 export const AddAnimalScreen = () => {
   const navigation = useNavigation();
-  const { addAnimal } = useShelterStore();
+  const route = useRoute<any>();
+  const editingAnimal = route.params?.animal as Animal | undefined;
+  const { addAnimal, updateAnimal, fetchAnimals } = useShelterStore();
   const { user } = useAuthStore();
   const adminCity = user?.user_metadata?.city || 'Nieznane';
+  const adminShelterName = user?.user_metadata?.shelter_name || 'Schronisko';
+  const adminStreet = user?.user_metadata?.shelter_street || '';
+  const adminPostalCode = user?.user_metadata?.shelter_postal_code || '';
+  const adminPhone = user?.user_metadata?.phone || '';
+  const adminEmail = user?.email || '';
+  const adminAddress = [adminCity, adminStreet, adminPostalCode].filter(Boolean).join(', ');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -18,10 +27,29 @@ export const AddAnimalScreen = () => {
   const [weight, setWeight] = useState('');
   const [color, setColor] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageAsset, setImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [type, setType] = useState('Pies');
   const [sex, setSex] = useState('Samiec');
   const [age, setAge] = useState('Młody');
+
+  useEffect(() => {
+    if (!editingAnimal) {
+      return;
+    }
+
+    setName(editingAnimal.name ?? '');
+    setDescription(editingAnimal.description ?? '');
+    setBreed(editingAnimal.breed ?? '');
+    setWeight(editingAnimal.weight ?? '');
+    setColor(editingAnimal.color ?? '');
+    setImageUri(editingAnimal.image ?? null);
+    setImageAsset(null);
+    setType(editingAnimal.type ?? 'Pies');
+    setSex(editingAnimal.sex ?? 'Samiec');
+    setAge(editingAnimal.age ?? 'Młody');
+  }, [editingAnimal]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -29,10 +57,13 @@ export const AddAnimalScreen = () => {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      setImageAsset(asset);
+      setImageUri(asset.uri);
     }
   };
 
@@ -42,21 +73,72 @@ export const AddAnimalScreen = () => {
       return;
     }
 
-    await addAnimal({
+    if (!adminShelterName.trim() || !adminAddress.trim() || !adminPhone.trim() || !adminEmail.trim()) {
+      Alert.alert('Brak danych', 'Uzupełnij dane schroniska w Ustawieniach (nazwa, adres, telefon, e-mail).');
+      return;
+    }
+
+    let finalImageUrl = imageUri || editingAnimal?.image || '';
+
+    if (imageAsset) {
+      setIsUploading(true);
+      try {
+        const uploadedUrl = await uploadAnimalImage(imageAsset, user?.id || 'unknown');
+        if (!uploadedUrl) {
+          Alert.alert('Błąd', 'Nie udało się wgrać zdjęcia. Spróbuj ponownie.');
+          setIsUploading(false);
+          return;
+        }
+        finalImageUrl = uploadedUrl;
+      } catch (error) {
+        Alert.alert('Błąd', 'Błąd podczas wgrywania zdjęcia.');
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    if (!finalImageUrl && !editingAnimal) {
+      Alert.alert('Brak zdjęcia', 'Dodaj zdjęcie zwierzaka przed publikacją.');
+      setIsUploading(false);
+      return;
+    }
+
+    const payload = {
       name: name.trim(),
       city: adminCity,
-      type: type,
-      sex: sex,
-      age: age,
+      shelterName: adminShelterName.trim(),
+      shelterAddress: adminAddress.trim(),
+      shelterPhone: adminPhone.trim(),
+      shelterEmail: adminEmail.trim(),
+      type,
+      sex,
+      age,
       breed: breed.trim() || 'Mieszaniec',
       weight: weight.trim() || 'Nieznana',
       color: color.trim() || 'Nieznane',
       description: description.trim(),
-      image: imageUri || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80'
-    });
+      image: finalImageUrl.trim(),
+    };
 
-    Alert.alert('Sukces!', 'Ogłoszenie zostało opublikowane.');
-    navigation.goBack();
+    try {
+      const success = editingAnimal
+        ? await updateAnimal(editingAnimal.id, payload)
+        : await addAnimal(payload);
+
+      if (!success) {
+        Alert.alert('Błąd', editingAnimal ? 'Nie udało się zaktualizować ogłoszenia.' : 'Nie udało się opublikować ogłoszenia.');
+        setIsUploading(false);
+        return;
+      }
+
+      await fetchAnimals();
+      Alert.alert('Sukces!', editingAnimal ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.');
+      setIsUploading(false);
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert('Błąd', error?.message ?? 'Wystąpił błąd podczas zapisu ogłoszenia.');
+      setIsUploading(false);
+    }
   };
 
   const SelectorGroup = ({ label, options, selected, onSelect }: { label: string, options: string[], selected: string, onSelect: (val: string) => void }) => (
@@ -92,7 +174,9 @@ export const AddAnimalScreen = () => {
         >
           <ChevronLeft size={24} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: '#1e293b' }}>Nowe ogłoszenie</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: '#1e293b' }}>
+          {editingAnimal ? 'Edytuj ogłoszenie' : 'Nowe ogłoszenie'}
+        </Text>
       </View>
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 24 }} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -104,7 +188,7 @@ export const AddAnimalScreen = () => {
             style={{ width: '100%', height: 160, backgroundColor: 'white', borderWidth: 2, borderColor: '#a7f3d0', borderStyle: 'dashed', borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
           >
             {imageUri ? (
-              <Image source={{ uri: imageUri }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+              <Image source={{ uri: imageUri }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
             ) : (
               <View style={{ alignItems: 'center' }}>
                 <Camera size={32} color="#10b981" style={{ marginBottom: 8 }} />
@@ -124,6 +208,18 @@ export const AddAnimalScreen = () => {
         <SelectorGroup label="Gatunek" options={['Pies', 'Kot', 'Inne']} selected={type} onSelect={setType} />
         <SelectorGroup label="Płeć" options={['Samiec', 'Samica']} selected={sex} onSelect={setSex} />
         <SelectorGroup label="Wiek" options={['Szczeniak/Kocię', 'Młody', 'Dorosły', 'Senior']} selected={age} onSelect={setAge} />
+
+        <View style={{ gap: 16, marginBottom: 8 }}>
+          <View>
+            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Dane schroniska (z profilu)</Text>
+            <View style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+              <Text style={{ color: '#1e293b', fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{adminShelterName || 'Brak nazwy schroniska'}</Text>
+              <Text style={{ color: '#475569', fontSize: 13 }}>{adminAddress || 'Brak adresu schroniska'}</Text>
+              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>{adminPhone || 'Brak telefonu kontaktowego'}</Text>
+              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>{adminEmail || 'Brak e-maila kontaktowego'}</Text>
+            </View>
+          </View>
+        </View>
 
         <View style={{ gap: 16 }}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -149,9 +245,17 @@ export const AddAnimalScreen = () => {
 
           <TouchableOpacity
             onPress={handlePublish}
-            style={{ width: '100%', backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
+            disabled={isUploading}
+            style={{ width: '100%', backgroundColor: isUploading ? '#cbd5e1' : '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
           >
-            <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Opublikuj ogłoszenie</Text>
+            {isUploading ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Wgrywanie zdjęcia...</Text>
+              </View>
+            ) : (
+              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Opublikuj ogłoszenie</Text>
+            )}
           </TouchableOpacity>
         </View>
 
