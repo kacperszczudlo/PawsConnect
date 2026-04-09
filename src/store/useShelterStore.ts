@@ -117,26 +117,30 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
     animalsFetchInFlight = (async () => {
     set({ isLoading: true });
     try {
-      let { data, error } = await supabase
+      const primary = await supabase
         .from('animals')
         .select(ANIMALS_LIST_SELECT)
         .order('created_at', { ascending: false });
 
-      if (error?.code === '42703') {
+      if (primary.error?.code === '42703') {
         const fallback = await supabase
           .from('animals')
           .select('id,name,city,type,breed,age,description,image,sex,weight,color')
           .order('created_at', { ascending: false });
 
-        data = fallback.data;
-        error = fallback.error;
-      }
-      
-      if (!error && data) {
-        set({ animals: data.map(normalizeAnimal), isLoading: false });
+        if (!fallback.error && fallback.data) {
+          set({ animals: fallback.data.map(normalizeAnimal), isLoading: false });
+        } else {
+          console.warn(`Błąd pobierania zwierząt: code=${fallback.error?.code ?? 'unknown'} message=${fallback.error?.message ?? 'unknown'} details=${fallback.error?.details ?? '-'} hint=${fallback.error?.hint ?? '-'}`);
+          set({ isLoading: false });
+        }
       } else {
-        console.warn(`Błąd pobierania zwierząt: code=${error?.code ?? 'unknown'} message=${error?.message ?? 'unknown'} details=${error?.details ?? '-'} hint=${error?.hint ?? '-'}`);
-        set({ isLoading: false });
+        if (!primary.error && primary.data) {
+          set({ animals: primary.data.map(normalizeAnimal), isLoading: false });
+        } else {
+          console.warn(`Błąd pobierania zwierząt: code=${primary.error?.code ?? 'unknown'} message=${primary.error?.message ?? 'unknown'} details=${primary.error?.details ?? '-'} hint=${primary.error?.hint ?? '-'}`);
+          set({ isLoading: false });
+        }
       }
     } catch (error) {
       console.warn(`Błąd pobierania zwierząt (exception): ${formatError(error)}`);
@@ -164,13 +168,13 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
   },
 
   updateAnimal: async (id, animalData) => {
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
       .from('animals')
       .update(serializeAnimal(animalData))
       .eq('id', id)
-      .select('id', { count: 'exact' });
+      .select('id');
 
-    if (!error && (count ?? data?.length ?? 0) > 0) {
+    if (!error && (data?.length ?? 0) > 0) {
       set((state) => ({
         animals: state.animals.map((animal) =>
           animal.id === id ? normalizeAnimal({ ...animal, ...animalData, id }) : animal,

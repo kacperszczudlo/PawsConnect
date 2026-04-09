@@ -84,7 +84,7 @@ export const SettingsScreen = ({ navigation }: any) => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: true,
+      base64: false,
     });
 
     if (!result.canceled) {

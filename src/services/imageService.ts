@@ -10,7 +10,7 @@ export const uploadImage = async (
 ): Promise<string | null> => {
   try {
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
-    let fileToUpload: Blob | File;
+    let fileToUpload: Blob | File | ArrayBuffer;
 
     if (Platform.OS === 'web') {
       if (!asset.uri) {
@@ -21,17 +21,15 @@ export const uploadImage = async (
       const response = await fetch(asset.uri);
       fileToUpload = await response.blob();
     } else {
-      if (!asset.base64) {
-        console.error('No base64 data provided for native image');
+      if (!asset.uri) {
+        console.error('No URI provided for native image');
         return null;
       }
 
-      const binaryString = atob(asset.base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      fileToUpload = new Blob([bytes], { type: asset.mimeType || 'image/jpeg' });
+      // Hermes/React Native may throw when creating Blob from ArrayBufferView.
+      // Upload an ArrayBuffer directly from the local file URI instead.
+      const response = await fetch(asset.uri);
+      fileToUpload = await response.arrayBuffer();
     }
 
     const { data, error } = await supabase.storage
