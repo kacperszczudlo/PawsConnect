@@ -30,6 +30,9 @@ interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
 }
 
+const DEFAULT_ANIMAL_IMAGE =
+  'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80';
+
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const { animals, fetchAnimals, isLoading } = useShelterStore();
   const { selectedCity, selectedType } = useFilterStore();
@@ -37,7 +40,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
-  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const favorites = useFavoritesStore((state) => state.favorites);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
 
@@ -90,18 +93,21 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
 
   const renderAnimalCard = ({ item }: { item: Animal }) => (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => onAnimalPress?.(item)}>
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image source={{ uri: item.image || DEFAULT_ANIMAL_IMAGE }} style={styles.image} />
       <View style={styles.info}>
         <View style={styles.cardHeader}>
           <Text style={styles.name}>{item.name}</Text>
           <TouchableOpacity
-            onPress={() => void handleToggleFavorite(item.id)}
+            onPress={(event) => {
+              event.stopPropagation();
+              void handleToggleFavorite(item.id);
+            }}
             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
             <Heart
               size={20}
-              color={isFavorite(item.id) ? '#f97316' : '#cbd5e1'}
-              fill={isFavorite(item.id) ? '#f97316' : 'none'}
+              color={favorites.includes(item.id) ? '#f97316' : '#cbd5e1'}
+              fill={favorites.includes(item.id) ? '#f97316' : 'none'}
             />
           </TouchableOpacity>
         </View>

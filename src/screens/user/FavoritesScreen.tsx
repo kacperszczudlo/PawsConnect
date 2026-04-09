@@ -6,12 +6,14 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useFavoritesStore } from '../../store/useFavoritesStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
 
+const DEFAULT_ANIMAL_IMAGE =
+  'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80';
+
 export const FavoritesScreen = () => {
   const { user } = useAuthStore();
   const { animals, fetchAnimals } = useShelterStore();
   const [loading, setLoading] = useState(true);
   const favorites = useFavoritesStore((state) => state.favorites);
-  const isFavorite = useFavoritesStore((state) => state.isFavorite);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
 
@@ -39,7 +41,7 @@ export const FavoritesScreen = () => {
 
   const renderAnimalCard = ({ item }: any) => (
     <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-      <Image source={{ uri: item.image }} style={styles.image} />
+      <Image source={{ uri: item.image || DEFAULT_ANIMAL_IMAGE }} style={styles.image} />
       <View style={styles.info}>
         <View style={styles.cardHeader}>
           <Text style={styles.name}>{item.name}</Text>
@@ -49,8 +51,8 @@ export const FavoritesScreen = () => {
           >
             <Heart
               size={20}
-              color={isFavorite(item.id) ? '#f97316' : '#cbd5e1'}
-              fill={isFavorite(item.id) ? '#f97316' : 'none'}
+              color={favorites.includes(item.id) ? '#f97316' : '#cbd5e1'}
+              fill={favorites.includes(item.id) ? '#f97316' : 'none'}
             />
           </TouchableOpacity>
         </View>

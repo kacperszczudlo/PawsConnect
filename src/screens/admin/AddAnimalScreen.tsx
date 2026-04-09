@@ -23,16 +23,25 @@ export const AddAnimalScreen = () => {
   const [sex, setSex] = useState('Samiec');
   const [age, setAge] = useState('Młody');
 
+  const toStoredImageUri = (asset: ImagePicker.ImagePickerAsset) => {
+    if (asset.base64) {
+      return `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`;
+    }
+
+    return asset.uri;
+  };
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+      setImageUri(toStoredImageUri(result.assets[0]));
     }
   };
 

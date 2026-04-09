@@ -33,7 +33,7 @@ interface DetailsScreenProps {
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
   const user = useAuthStore((state) => state.user);
-  const isFavorite = useFavoritesStore((state) => state.isFavorite);
+  const favorites = useFavoritesStore((state) => state.favorites);
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
   const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
 
@@ -76,8 +76,8 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <TouchableOpacity style={styles.iconBtn} onPress={() => void handleToggleFavorite()}>
               <Heart
                 size={20}
-                color={isFavorite(animal.id) ? '#f97316' : '#1e293b'}
-                fill={isFavorite(animal.id) ? '#f97316' : 'none'}
+                color={favorites.includes(animal.id) ? '#f97316' : '#1e293b'}
+                fill={favorites.includes(animal.id) ? '#f97316' : 'none'}
               />
             </TouchableOpacity>
           </View>
