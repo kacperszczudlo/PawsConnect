@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { PawPrint, Calendar, Home, Check, X } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { supabase } from '../../services/supabase';
 import { useShelterStore } from '../../store/useShelterStore';
 
 export const AdminApplicationsScreen = () => {
@@ -8,6 +10,25 @@ export const AdminApplicationsScreen = () => {
 
   useEffect(() => {
     void fetchApplications();
+  }, [fetchApplications]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchApplications();
+    }, [fetchApplications]),
+  );
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-applications-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => {
+        void fetchApplications();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [fetchApplications]);
 
   return (
@@ -50,6 +71,18 @@ export const AdminApplicationsScreen = () => {
                   Dotyczy: <Text style={{ fontWeight: 'bold', color: '#1e293b' }}>{app.animalName}</Text>
                 </Text>
               </View>
+              <Text style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>
+                {app.shelterName ? `Schronisko: ${app.shelterName}` : 'Schronisko: brak danych'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                Adres: {app.shelterAddress ?? 'Brak danych'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                Telefon: {app.shelterPhone ?? 'Brak telefonu'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                E-mail: {app.shelterEmail ?? 'Brak e-maila'}
+              </Text>
             </View>
 
             {app.status === 'Oczekujące' && (

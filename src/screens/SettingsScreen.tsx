@@ -15,6 +15,7 @@ import {
   Lock,
   Mail,
   User,
+  Home,
   MapPin,
   Phone,
 } from 'lucide-react-native';
@@ -22,8 +23,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../services/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { CityPickerField } from '../components/CityPickerField';
+import { syncProfileEverywhere } from '../services/profileSyncService';
+import { uploadAvatarImage } from '../services/imageService';
+import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
 
-const InputGroup = ({ icon, value, onChange, placeholder, secure = false }: any) => (
+const InputGroup = ({ icon, value, onChange, placeholder, secure = false, editable = true }: any) => (
   <View
     style={{
       flexDirection: 'row',
@@ -42,6 +46,7 @@ const InputGroup = ({ icon, value, onChange, placeholder, secure = false }: any)
       onChangeText={onChange}
       placeholder={placeholder}
       secureTextEntry={secure}
+      editable={editable}
       placeholderTextColor="#94a3b8"
       style={{
         flex: 1,
@@ -59,15 +64,19 @@ export const SettingsScreen = ({ navigation }: any) => {
   const isShelter = role === 'admin';
 
   const [loading, setLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [name, setName] = useState(
     isShelter ? user?.user_metadata?.shelter_name : user?.user_metadata?.full_name || '',
   );
   const [city, setCity] = useState(user?.user_metadata?.city || 'Cała Polska');
   const [phone, setPhone] = useState(user?.user_metadata?.phone || '');
+  const [shelterStreet, setShelterStreet] = useState(user?.user_metadata?.shelter_street || '');
+  const [shelterPostalCode, setShelterPostalCode] = useState(user?.user_metadata?.shelter_postal_code || '');
   const [email, setEmail] = useState(user?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [avatar, setAvatar] = useState(user?.user_metadata?.avatar_url || null);
+  const [avatarAsset, setAvatarAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -75,10 +84,13 @@ export const SettingsScreen = ({ navigation }: any) => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
+      base64: true,
     });
 
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      const asset = result.assets[0];
+      setAvatarAsset(asset);
+      setAvatar(asset.uri);
     }
   };
 
@@ -113,33 +125,66 @@ export const SettingsScreen = ({ navigation }: any) => {
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
+      const normalizedPhone = normalizePhone(phone);
+      const normalizedPostalCode = normalizePostalCode(shelterPostalCode);
+
+      if (!isValidPhone(normalizedPhone)) {
+        Alert.alert('Błąd', 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).');
+        setLoading(false);
+        return;
+      }
+
+      if (isShelter && !isValidPostalCode(normalizedPostalCode)) {
+        Alert.alert('Błąd', 'Podaj poprawny kod pocztowy w formacie 00-000.');
+        setLoading(false);
+        return;
+      }
+
       const canChangePassword = await ensurePasswordChangeAllowed();
       if (!canChangePassword) {
         setLoading(false);
         return;
       }
 
-      const updates: any = {
-        data: {
-          [isShelter ? 'shelter_name' : 'full_name']: name,
-          city,
-          phone,
-          avatar_url: avatar,
-        },
-      };
+      let finalAvatarUrl = avatar || '';
 
-      if (newPassword) {
-        updates.password = newPassword;
+      if (avatarAsset) {
+        setAvatarUploading(true);
+        try {
+          const uploadedUrl = await uploadAvatarImage(avatarAsset, user?.id || 'unknown');
+          if (!uploadedUrl) {
+            Alert.alert('Błąd', 'Nie udało się wgrać awatara. Spróbuj ponownie.');
+            setLoading(false);
+            setAvatarUploading(false);
+            return;
+          }
+          finalAvatarUrl = uploadedUrl;
+        } catch (error) {
+          Alert.alert('Błąd', 'Błąd podczas wgrywania awatara.');
+          setLoading(false);
+          setAvatarUploading(false);
+          return;
+        } finally {
+          setAvatarUploading(false);
+        }
       }
 
-      if (email !== user?.email) {
-        updates.email = email;
-      }
+      const nextEmail = user?.email || email.trim();
+      const updatedUser = await syncProfileEverywhere({
+        role: isShelter ? 'admin' : 'user',
+        user: user!,
+        fullName: name,
+        city,
+        phone: normalizedPhone,
+        email: nextEmail,
+        avatarUrl: finalAvatarUrl,
+        shelterStreet,
+        shelterPostalCode: normalizedPostalCode,
+        newPassword: newPassword || undefined,
+      });
 
-      const { data, error } = await supabase.auth.updateUser(updates);
-      if (error) throw error;
-
-      setUser(data.user);
+      setUser(updatedUser);
+      setAvatarAsset(null);
       Alert.alert('Sukces', 'Dane profilowe zostały zaktualizowane.');
       navigation.goBack();
     } catch (error: any) {
@@ -203,14 +248,21 @@ export const SettingsScreen = ({ navigation }: any) => {
                 overflow: 'hidden',
               }}
             >
-              <Image
-                source={{
-                  uri:
-                    avatar ||
-                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=250&q=80',
-                }}
-                style={{ width: '100%', height: '100%', borderRadius: 55 }}
-              />
+              {avatar ? (
+                <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%', borderRadius: 55 }} />
+              ) : (
+                <View
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'white',
+                  }}
+                >
+                  {isShelter ? <Home size={34} color="#94a3b8" /> : <User size={34} color="#94a3b8" />}
+                </View>
+              )}
             </View>
             <View
               style={{
@@ -255,6 +307,24 @@ export const SettingsScreen = ({ navigation }: any) => {
 
             <CityPickerField value={city} onChange={setCity} label="Miasto" />
 
+            {isShelter ? (
+              <>
+                <InputGroup
+                  icon={<MapPin size={18} color="#64748b" style={{ marginRight: 8 }} />}
+                  value={shelterStreet}
+                  onChange={setShelterStreet}
+                  placeholder="Ulica testowa 1"
+                />
+
+                <InputGroup
+                  icon={<MapPin size={18} color="#64748b" style={{ marginRight: 8 }} />}
+                  value={shelterPostalCode}
+                  onChange={setShelterPostalCode}
+                  placeholder="00-000"
+                />
+              </>
+            ) : null}
+
             <InputGroup
               icon={<Phone size={18} color="#64748b" style={{ marginRight: 8 }} />}
               value={phone}
@@ -276,12 +346,33 @@ export const SettingsScreen = ({ navigation }: any) => {
               BEZPIECZEŃSTWO
             </Text>
 
-            <InputGroup
-              icon={<Mail size={18} color="#64748b" style={{ marginRight: 8 }} />}
-              value={email}
-              onChange={setEmail}
-              placeholder="Email"
-            />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#f1f5f9',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                opacity: 0.9,
+              }}
+            >
+              <Mail size={18} color="#94a3b8" style={{ marginRight: 8 }} />
+              <View style={{ flex: 1, paddingVertical: 12 }}>
+                <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '700', marginBottom: 2 }}>
+                  E-mail konta (nieedytowalny)
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{ fontSize: 15, color: '#475569', fontWeight: '600' }}
+                >
+                  {email || 'Brak adresu e-mail'}
+                </Text>
+              </View>
+            </View>
 
             <InputGroup
               icon={<Lock size={18} color="#64748b" style={{ marginRight: 8 }} />}

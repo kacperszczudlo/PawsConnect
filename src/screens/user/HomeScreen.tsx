@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   MapPin,
   Search,
@@ -25,13 +26,27 @@ import { Animal, useShelterStore } from '../../store/useShelterStore';
 import { useFilterStore } from '../../store/useFilterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
+import { useCallback } from 'react';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
 }
 
-const DEFAULT_ANIMAL_IMAGE =
-  'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80';
+const getShelterLocationLabel = (animal: Animal) => {
+  if (animal.shelterName && animal.shelterAddress) {
+    return `${animal.shelterName} • ${animal.shelterAddress}`;
+  }
+
+  if (animal.shelterName) {
+    return animal.shelterName;
+  }
+
+  if (animal.city) {
+    return `Schronisko • ${animal.city}`;
+  }
+
+  return 'Schronisko';
+};
 
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const { animals, fetchAnimals, isLoading } = useShelterStore();
@@ -55,11 +70,25 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
     fetchAnimals();
   }, [fetchAnimals]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void fetchAnimals();
+    }, [fetchAnimals]),
+  );
+
   useEffect(() => {
     if (user?.id) {
       fetchFavorites(user.id);
     }
   }, [fetchFavorites, user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        void fetchFavorites(user.id);
+      }
+    }, [fetchFavorites, user?.id]),
+  );
 
   if (showFilter) {
     return <FilterScreen onClose={() => setShowFilter(false)} />;
@@ -93,7 +122,13 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
 
   const renderAnimalCard = ({ item }: { item: Animal }) => (
     <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => onAnimalPress?.(item)}>
-      <Image source={{ uri: item.image || DEFAULT_ANIMAL_IMAGE }} style={styles.image} />
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.image} />
+      ) : (
+        <View style={styles.imagePlaceholder}>
+          <PawPrint size={28} color="#94a3b8" />
+        </View>
+      )}
       <View style={styles.info}>
         <View style={styles.cardHeader}>
           <Text style={styles.name}>{item.name}</Text>
@@ -120,7 +155,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
           </View>
           <View style={styles.distanceTag}>
             <MapPin size={12} color="#94a3b8" />
-            <Text style={styles.tagDistanceText}>{item.distance ?? 'Schronisko'}</Text>
+            <Text style={styles.tagDistanceText} numberOfLines={2}>{getShelterLocationLabel(item)}</Text>
           </View>
         </View>
       </View>
@@ -312,6 +347,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   image: { width: 96, height: 96, borderRadius: 18 },
+  imagePlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 18,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   info: { flex: 1, marginLeft: 16, justifyContent: 'center' },
   cardHeader: {
     flexDirection: 'row',
@@ -320,7 +363,7 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
   breed: { fontSize: 12, color: '#64748b', marginTop: 4 },
-  tags: { flexDirection: 'row', marginTop: 12, gap: 8 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 },
   tagAge: {
     backgroundColor: '#fff7ed',
     paddingHorizontal: 8,
@@ -335,12 +378,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   tagDistanceText: {
     color: '#64748b',
     fontSize: 11,
     fontWeight: 'bold',
     marginLeft: 4,
+    flexShrink: 1,
   },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#94a3b8' },
 });
