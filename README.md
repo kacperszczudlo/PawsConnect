@@ -1,4 +1,4 @@
-# 🐾 PawsConnect
+# PawsConnect
 
 Pet adoption platform connecting users with shelters. Browse animals, save favorites, and submit adoption or walk applications.
 
