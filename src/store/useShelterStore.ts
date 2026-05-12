@@ -3,6 +3,17 @@ import { supabase } from '../services/supabase';
 
 export type AppStatus = 'Oczekujące' | 'Zaakceptowane' | 'Odrzucone';
 
+export type UpdateApplicationStatusResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'conflict';
+      conflict: { applicantName: string; date: string; animalName: string };
+    }
+  | { ok: false; reason: 'unauthorized' }
+  | { ok: false; reason: 'not_found' }
+  | { ok: false; reason: 'error'; message?: string };
+
 export interface Application {
   id: string;
   type: 'Adopcja' | 'Spacer';
@@ -126,10 +137,10 @@ interface ShelterState {
   updateAnimal: (id: string, animal: Omit<Animal, 'id'>) => Promise<boolean>;
   removeAnimal: (id: string) => Promise<void>;
   fetchApplications: () => Promise<void>;
-  updateApplicationStatus: (id: string, status: AppStatus) => Promise<void>;
+  updateApplicationStatus: (id: string, status: AppStatus) => Promise<UpdateApplicationStatusResult>;
 }
 
-export const useShelterStore = create<ShelterState>((set) => ({
+export const useShelterStore = create<ShelterState>((set, get) => ({
   animals: [],
   isLoading: false,
   applications: [],
@@ -388,10 +399,45 @@ export const useShelterStore = create<ShelterState>((set) => ({
 
     if (!user?.id) {
       console.error('Błąd aktualizacji wniosku: brak zalogowanego użytkownika.');
-      return;
+      return { ok: false, reason: 'unauthorized' };
     }
 
     const emailTrimmed = user.email?.trim() ?? '';
+
+    // Pies nie może być na dwóch spacerach naraz — sprawdź kolizję, zanim zaakceptujesz.
+    if (status === 'Zaakceptowane') {
+      const target = get().applications.find((app) => app.id === id);
+
+      if (target && target.type === 'Spacer' && target.animalId && target.date) {
+        const { data: conflictRows, error: conflictError } = await supabase
+          .from('applications')
+          .select('id, applicant_name, date, animal_name')
+          .eq('animal_id', target.animalId)
+          .eq('date', target.date)
+          .eq('type', 'Spacer')
+          .eq('status', 'Zaakceptowane')
+          .neq('id', id)
+          .limit(1);
+
+        if (conflictError) {
+          console.error('Błąd sprawdzania kolizji spaceru:', conflictError);
+          return { ok: false, reason: 'error', message: conflictError.message };
+        }
+
+        const conflictRow = conflictRows?.[0];
+        if (conflictRow) {
+          return {
+            ok: false,
+            reason: 'conflict',
+            conflict: {
+              applicantName: conflictRow.applicant_name ?? 'inny użytkownik',
+              date: conflictRow.date ?? target.date,
+              animalName: conflictRow.animal_name ?? target.animalName,
+            },
+          };
+        }
+      }
+    }
 
     const owned = await supabase
       .from('applications')
@@ -411,7 +457,7 @@ export const useShelterStore = create<ShelterState>((set) => ({
         console.warn(
           'Brak kolumny shelter_user_id i brak e-maila konta — uruchom migrację SQL lub ustaw e-mail schroniska.',
         );
-        return;
+        return { ok: false, reason: 'unauthorized' };
       }
 
       const fallback = await supabase
@@ -450,12 +496,12 @@ export const useShelterStore = create<ShelterState>((set) => ({
 
     if (error) {
       console.error('Błąd aktualizacji statusu wniosku:', error);
-      return;
+      return { ok: false, reason: 'error', message: error.message };
     }
 
     if (!updated) {
       console.warn(`Aktualizacja wniosku nie zmieniła rekordu (id=${id}). Brak uprawnień.`);
-      return;
+      return { ok: false, reason: 'not_found' };
     }
 
     set((state) => ({
@@ -463,5 +509,7 @@ export const useShelterStore = create<ShelterState>((set) => ({
         app.id === id ? { ...app, status, shelterUserId: app.shelterUserId ?? user.id } : app,
       ),
     }));
+
+    return { ok: true };
   },
 }));

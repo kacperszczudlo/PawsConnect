@@ -3,13 +3,55 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { PawPrint, Calendar, Home, Check, X } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
-import { useShelterStore } from '../../store/useShelterStore';
+import { useShelterStore, type AppStatus } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { canShelterManageApplication } from '../../utils/shelterAnimalOwnership';
+import { useToast } from '../../context/ToastContext';
 
 export const AdminApplicationsScreen = () => {
   const user = useAuthStore((state) => state.user);
   const { applications, fetchApplications, updateApplicationStatus } = useShelterStore();
+  const { showToast } = useToast();
+
+  const handleUpdateStatus = useCallback(
+    async (applicationId: string, status: AppStatus) => {
+      const result = await updateApplicationStatus(applicationId, status);
+      if (result.ok) {
+        if (status === 'Zaakceptowane') {
+          showToast({ type: 'success', message: 'Wniosek został zaakceptowany.' });
+        } else if (status === 'Odrzucone') {
+          showToast({ type: 'info', message: 'Wniosek został odrzucony.' });
+        }
+        return;
+      }
+
+      if (result.reason === 'conflict') {
+        showToast({
+          type: 'error',
+          title: 'Termin zajęty',
+          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}. Pies nie może być na dwóch spacerach jednocześnie.`,
+          duration: 6000,
+        });
+        return;
+      }
+
+      if (result.reason === 'unauthorized' || result.reason === 'not_found') {
+        showToast({
+          type: 'error',
+          title: 'Brak uprawnień',
+          message: 'Nie masz uprawnień do aktualizacji tego wniosku.',
+        });
+        return;
+      }
+
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: result.message ?? 'Nie udało się zaktualizować wniosku.',
+      });
+    },
+    [showToast, updateApplicationStatus],
+  );
 
   const myApplications = useMemo(
     () => applications.filter((app) => canShelterManageApplication(app, user)),
@@ -96,14 +138,14 @@ export const AdminApplicationsScreen = () => {
             {app.status === 'Oczekujące' && (
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#f8fafc' }}>
                 <TouchableOpacity 
-                  onPress={() => updateApplicationStatus(app.id, 'Odrzucone')}
+                  onPress={() => { void handleUpdateStatus(app.id, 'Odrzucone'); }}
                   style={{ flex: 1, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fee2e2', paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
                 >
                   <X size={16} color="#ef4444" style={{ marginRight: 8 }} />
                   <Text style={{ color: '#dc2626', fontWeight: 'bold', fontSize: 14 }}>Odrzuć</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  onPress={() => updateApplicationStatus(app.id, 'Zaakceptowane')}
+                  onPress={() => { void handleUpdateStatus(app.id, 'Zaakceptowane'); }}
                   style={{ flex: 1, backgroundColor: '#10b981', paddingVertical: 12, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 1, elevation: 1 }}
                 >
                   <Check size={16} color="white" style={{ marginRight: 8 }} />
