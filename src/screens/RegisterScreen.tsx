@@ -19,6 +19,8 @@ import type { AuthStackParamList } from '../navigation/AuthStack';
 import { CityPickerField } from '../components/CityPickerField';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
 import { useToast } from '../context/ToastContext';
+import { useNetworkGuard } from '../context/NetworkContext';
+import { friendlyErrorMessage } from '../utils/networkErrors';
 
 type RoleType = 'user' | 'admin';
 
@@ -41,6 +43,7 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { showToast } = useToast();
+  const guardOnline = useNetworkGuard();
 
   const goToLogin = () => {
     if (onLoginPress) {
@@ -84,6 +87,10 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       return;
     }
 
+    if (!guardOnline()) {
+      return;
+    }
+
     setLoading(true);
     try {
       const metadata = roleType === 'admin'
@@ -104,7 +111,11 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       });
 
       if (error) {
-        showToast({ type: 'error', title: 'Błąd rejestracji', message: error.message });
+        showToast({
+          type: 'error',
+          title: 'Błąd rejestracji',
+          message: friendlyErrorMessage(error, error.message),
+        });
       } else if (data.session) {
         // Bez potwierdzania e-maila Supabase od razu loguje — App.tsx przełącza na główny stack.
         // Nawigacja do „Login” rzucałaby błąd, bo AuthStack już nie jest zamontowany.
@@ -120,11 +131,14 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
         });
         goToLogin();
       }
-    } catch {
+    } catch (err) {
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: 'Wystąpił nieoczekiwany problem podczas rejestracji. Spróbuj ponownie.',
+        message: friendlyErrorMessage(
+          err,
+          'Wystąpił nieoczekiwany problem podczas rejestracji. Spróbuj ponownie.',
+        ),
       });
     } finally {
       setLoading(false);

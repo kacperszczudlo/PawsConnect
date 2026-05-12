@@ -13,6 +13,8 @@ import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import { useToast } from '../context/ToastContext';
+import { useNetworkGuard } from '../context/NetworkContext';
+import { friendlyErrorMessage } from '../utils/networkErrors';
 
 type LoginScreenProps = {
   onRegisterPress?: () => void;
@@ -29,10 +31,15 @@ export const LoginScreen = ({
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
+  const guardOnline = useNetworkGuard();
 
   const handleLogin = async () => {
     if (!email || !password) {
       showToast({ type: 'error', title: 'Błąd', message: 'Proszę wypełnić wszystkie pola' });
+      return;
+    }
+
+    if (!guardOnline()) {
       return;
     }
 
@@ -44,7 +51,11 @@ export const LoginScreen = ({
     setLoading(false);
 
     if (error) {
-      showToast({ type: 'error', title: 'Błąd logowania', message: error.message });
+      showToast({
+        type: 'error',
+        title: 'Błąd logowania',
+        message: friendlyErrorMessage(error, error.message),
+      });
     } else {
       showToast({ type: 'success', message: 'Udało się zalogować!' });
       if (onLoginPress) {

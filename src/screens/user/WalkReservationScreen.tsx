@@ -5,6 +5,8 @@ import { Animal } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
 import { useToast } from '../../context/ToastContext';
+import { useNetworkGuard } from '../../context/NetworkContext';
+import { friendlyErrorMessage } from '../../utils/networkErrors';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -22,6 +24,7 @@ interface Props {
 export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
   const user = useAuthStore((state) => state.user);
   const { showToast } = useToast();
+  const guardOnline = useNetworkGuard();
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
@@ -91,7 +94,11 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
     setLoading(false);
 
     if (error) {
-      showToast({ type: 'error', title: 'Błąd', message: `Nie udało się zapisać spaceru: ${error.message}` });
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: friendlyErrorMessage(error, `Nie udało się zapisać spaceru: ${error.message}`),
+      });
       return;
     }
 

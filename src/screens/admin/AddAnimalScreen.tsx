@@ -7,11 +7,14 @@ import { Animal, useShelterStore } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { uploadAnimalImage } from '../../services/imageService';
 import { useToast } from '../../context/ToastContext';
+import { useNetworkGuard } from '../../context/NetworkContext';
 import { canShelterManageAnimal } from '../../utils/shelterAnimalOwnership';
+import { friendlyErrorMessage } from '../../utils/networkErrors';
 
 export const AddAnimalScreen = () => {
   const navigation = useNavigation();
   const { showToast } = useToast();
+  const guardOnline = useNetworkGuard();
   const route = useRoute<any>();
   const editingAnimal = route.params?.animal as Animal | undefined;
   const { addAnimal, updateAnimal, fetchAnimals } = useShelterStore();
@@ -95,6 +98,10 @@ export const AddAnimalScreen = () => {
       return;
     }
 
+    if (!guardOnline()) {
+      return;
+    }
+
     let finalImageUrl = imageUri || editingAnimal?.image || '';
 
     if (imageAsset) {
@@ -108,7 +115,11 @@ export const AddAnimalScreen = () => {
         }
         finalImageUrl = uploadedUrl;
       } catch (error) {
-        showToast({ type: 'error', title: 'Błąd', message: 'Błąd podczas wgrywania zdjęcia.' });
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: friendlyErrorMessage(error, 'Błąd podczas wgrywania zdjęcia.'),
+        });
         setIsUploading(false);
         return;
       }
@@ -159,8 +170,12 @@ export const AddAnimalScreen = () => {
       });
       setIsUploading(false);
       navigation.goBack();
-    } catch (error: any) {
-      showToast({ type: 'error', title: 'Błąd', message: error?.message ?? 'Wystąpił błąd podczas zapisu ogłoszenia.' });
+    } catch (error: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: friendlyErrorMessage(error, 'Wystąpił błąd podczas zapisu ogłoszenia.'),
+      });
       setIsUploading(false);
     }
   };
