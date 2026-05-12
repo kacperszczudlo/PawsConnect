@@ -22,6 +22,7 @@ import { CATEGORIES } from '../../constants/categories';
 import { FilterScreen } from './FilterScreen';
 import { useFavoritesInteractionsSlice } from '../../store/useFavoritesStore';
 import { Animal, useShelterAnimalsHomeSlice } from '../../store/useShelterStore';
+import { ALL_POLAND_CITY_LABEL } from '../../constants/cities';
 import { useFilterSelectionSlice } from '../../store/useFilterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
@@ -106,7 +107,7 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   }
 
   const filteredAnimals = animals.filter((animal) => {
-    const matchesCity = selectedCity === 'Cała Polska' || animal.city === selectedCity;
+    const matchesCity = selectedCity === ALL_POLAND_CITY_LABEL || animal.city === selectedCity;
     const matchesType = !selectedType || animal.type === selectedType;
     const matchesCategory =
       activeCategory === 'Wszystkie' ||
