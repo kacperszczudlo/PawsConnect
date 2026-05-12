@@ -8,7 +8,6 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +26,7 @@ import { useFilterStore } from '../../store/useFilterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
 import { useCallback } from 'react';
+import { useToast } from '../../context/ToastContext';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
@@ -49,6 +49,7 @@ const getShelterLocationLabel = (animal: Animal) => {
 };
 
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
+  const { showToast } = useToast();
   const { animals, fetchAnimals, isLoading } = useShelterStore();
   const { selectedCity, selectedType } = useFilterStore();
   const user = useAuthStore((state) => state.user);
@@ -62,7 +63,11 @@ export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
   const handleToggleFavorite = async (animalId: string) => {
     const ok = await toggleFavorite(user?.id, animalId);
     if (!ok) {
-      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).',
+      });
     }
   };
 

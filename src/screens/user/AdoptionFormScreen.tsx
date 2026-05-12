@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronLeft, Send, PawPrint } from 'lucide-react-native';
 import { Animal } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
+import { useToast } from '../../context/ToastContext';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -20,17 +21,22 @@ interface Props {
 
 export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
   const user = useAuthStore((state) => state.user);
+  const { showToast } = useToast();
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!user?.id) {
-      Alert.alert('Błąd', 'Musisz być zalogowany, aby wysłać wniosek.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Musisz być zalogowany, aby wysłać wniosek.' });
       return;
     }
 
     if (!reason.trim()) {
-      Alert.alert('Uzupełnij formularz', 'Opisz proszę, dlaczego chcesz adoptować to zwierzę.');
+      showToast({
+        type: 'info',
+        title: 'Uzupełnij formularz',
+        message: 'Opisz proszę, dlaczego chcesz adoptować to zwierzę.',
+      });
       return;
     }
 
@@ -53,11 +59,11 @@ export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Błąd', `Nie udało się wysłać wniosku: ${error.message}`);
+      showToast({ type: 'error', title: 'Błąd', message: `Nie udało się wysłać wniosku: ${error.message}` });
       return;
     }
 
-    Alert.alert('Sukces', 'Wniosek adopcyjny został wysłany.');
+    showToast({ type: 'success', message: 'Wniosek adopcyjny został wysłany.' });
     onSuccess();
   };
 

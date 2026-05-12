@@ -7,12 +7,12 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useNavigation } from '@react-navigation/native';
+import { useToast } from '../context/ToastContext';
 
 type LoginScreenProps = {
   onRegisterPress?: () => void;
@@ -28,10 +28,11 @@ export const LoginScreen = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<any>();
+  const { showToast } = useToast();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Błąd', 'Proszę wypełnić wszystkie pola');
+      showToast({ type: 'error', title: 'Błąd', message: 'Proszę wypełnić wszystkie pola' });
       return;
     }
 
@@ -43,9 +44,9 @@ export const LoginScreen = ({
     setLoading(false);
 
     if (error) {
-      Alert.alert('Błąd logowania', error.message);
+      showToast({ type: 'error', title: 'Błąd logowania', message: error.message });
     } else {
-      Alert.alert('Sukces', 'Zostałeś zalogowany!');
+      showToast({ type: 'success', message: 'Udało się zalogować!' });
       if (onLoginPress) {
         onLoginPress();
       }

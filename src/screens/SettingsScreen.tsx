@@ -5,7 +5,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -26,6 +25,7 @@ import { CityPickerField } from '../components/CityPickerField';
 import { syncProfileEverywhere } from '../services/profileSyncService';
 import { uploadAvatarImage } from '../services/imageService';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
+import { useToast } from '../context/ToastContext';
 
 const InputGroup = ({ icon, value, onChange, placeholder, secure = false, editable = true }: any) => (
   <View
@@ -61,6 +61,7 @@ const InputGroup = ({ icon, value, onChange, placeholder, secure = false, editab
 
 export const SettingsScreen = ({ navigation }: any) => {
   const { user, setUser, role } = useAuthStore();
+  const { showToast } = useToast();
   const isShelter = role === 'admin';
 
   const [loading, setLoading] = useState(false);
@@ -100,12 +101,12 @@ export const SettingsScreen = ({ navigation }: any) => {
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Błąd', 'Nowe hasło musi mieć co najmniej 6 znaków.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Nowe hasło musi mieć co najmniej 6 znaków.' });
       return false;
     }
 
     if (!currentPassword) {
-      Alert.alert('Błąd', 'Podaj obecne hasło, aby ustawić nowe.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Podaj obecne hasło, aby ustawić nowe.' });
       return false;
     }
 
@@ -115,7 +116,7 @@ export const SettingsScreen = ({ navigation }: any) => {
     });
 
     if (error) {
-      Alert.alert('Błąd', 'Obecne hasło jest niepoprawne.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Obecne hasło jest niepoprawne.' });
       return false;
     }
 
@@ -129,13 +130,17 @@ export const SettingsScreen = ({ navigation }: any) => {
       const normalizedPostalCode = normalizePostalCode(shelterPostalCode);
 
       if (!isValidPhone(normalizedPhone)) {
-        Alert.alert('Błąd', 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).');
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
+        });
         setLoading(false);
         return;
       }
 
       if (isShelter && !isValidPostalCode(normalizedPostalCode)) {
-        Alert.alert('Błąd', 'Podaj poprawny kod pocztowy w formacie 00-000.');
+        showToast({ type: 'error', title: 'Błąd', message: 'Podaj poprawny kod pocztowy w formacie 00-000.' });
         setLoading(false);
         return;
       }
@@ -153,14 +158,14 @@ export const SettingsScreen = ({ navigation }: any) => {
         try {
           const uploadedUrl = await uploadAvatarImage(avatarAsset, user?.id || 'unknown');
           if (!uploadedUrl) {
-            Alert.alert('Błąd', 'Nie udało się wgrać awatara. Spróbuj ponownie.');
+            showToast({ type: 'error', title: 'Błąd', message: 'Nie udało się wgrać awatara. Spróbuj ponownie.' });
             setLoading(false);
             setAvatarUploading(false);
             return;
           }
           finalAvatarUrl = uploadedUrl;
         } catch (error) {
-          Alert.alert('Błąd', 'Błąd podczas wgrywania awatara.');
+          showToast({ type: 'error', title: 'Błąd', message: 'Błąd podczas wgrywania awatara.' });
           setLoading(false);
           setAvatarUploading(false);
           return;
@@ -185,10 +190,10 @@ export const SettingsScreen = ({ navigation }: any) => {
 
       setUser(updatedUser);
       setAvatarAsset(null);
-      Alert.alert('Sukces', 'Dane profilowe zostały zaktualizowane.');
+      showToast({ type: 'success', message: 'Dane profilowe zostały zaktualizowane.' });
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Błąd', error.message);
+      showToast({ type: 'error', title: 'Błąd', message: error.message });
     } finally {
       setLoading(false);
     }

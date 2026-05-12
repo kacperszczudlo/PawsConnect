@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff, User, Phone, Building2, MapPin } from 'lucide-react-native';
@@ -19,6 +18,7 @@ import { supabase } from '../services/supabase';
 import type { AuthStackParamList } from '../navigation/AuthStack';
 import { CityPickerField } from '../components/CityPickerField';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
+import { useToast } from '../context/ToastContext';
 
 type RoleType = 'user' | 'admin';
 
@@ -40,6 +40,7 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
   const formAnimation = useState(() => new Animated.Value(0))[0];
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const { showToast } = useToast();
 
   const goToLogin = () => {
     if (onLoginPress) {
@@ -65,17 +66,21 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       (!normalizedShelterName || !normalizedCity || !normalizedShelterStreet || !normalizedShelterPostalCode);
 
     if (!normalizedEmail || !normalizedPassword || !normalizedPhone || hasMissingUserFields || hasMissingAdminFields) {
-      Alert.alert('Błąd', 'Proszę wypełnić wszystkie pola');
+      showToast({ type: 'error', title: 'Błąd', message: 'Proszę wypełnić wszystkie pola' });
       return;
     }
 
     if (!isValidPhone(normalizedPhone)) {
-      Alert.alert('Błąd', 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
+      });
       return;
     }
 
     if (roleType === 'admin' && !isValidPostalCode(normalizedShelterPostalCode)) {
-      Alert.alert('Błąd', 'Podaj poprawny kod pocztowy w formacie 00-000.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Podaj poprawny kod pocztowy w formacie 00-000.' });
       return;
     }
 
@@ -99,13 +104,21 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       });
 
       if (error) {
-        Alert.alert('Błąd rejestracji', error.message);
+        showToast({ type: 'error', title: 'Błąd rejestracji', message: error.message });
       } else {
-        Alert.alert('Sukces', 'Konto zostało utworzone. Sprawdź swoją skrzynkę e-mail, aby potwierdzić rejestrację.');
+        showToast({
+          type: 'success',
+          message:
+            'Konto zostało utworzone. Sprawdź skrzynkę e-mail, aby potwierdzić rejestrację.',
+        });
         goToLogin();
       }
     } catch {
-      Alert.alert('Błąd', 'Wystąpił nieoczekiwany problem podczas rejestracji. Spróbuj ponownie.');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Wystąpił nieoczekiwany problem podczas rejestracji. Spróbuj ponownie.',
+      });
     } finally {
       setLoading(false);
     }

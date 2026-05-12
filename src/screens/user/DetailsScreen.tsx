@@ -6,7 +6,6 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -26,6 +25,7 @@ import { useFavoritesStore } from '../../store/useFavoritesStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
 import { formatAgeBySex } from '../../utils/animalLabels';
+import { useToast } from '../../context/ToastContext';
 
 interface DetailsScreenProps {
   animal: Animal;
@@ -33,6 +33,7 @@ interface DetailsScreenProps {
 }
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
+  const { showToast } = useToast();
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
   const [currentAnimal, setCurrentAnimal] = useState(animal);
   const user = useAuthStore((state) => state.user);
@@ -93,7 +94,11 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const handleToggleFavorite = async () => {
     const ok = await toggleFavorite(user?.id, animal.id);
     if (!ok) {
-      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).',
+      });
     }
   };
 

@@ -11,6 +11,7 @@ import { UserStack } from './src/navigation/UserStack';
 import { Animal } from './src/store/useShelterStore';
 import { supabase } from './src/services/supabase';
 import { useAuthStore } from './src/store/useAuthStore';
+import { ToastProvider } from './src/context/ToastContext';
 
 export default function App() {
   const { session, setSession, setUser, isLoading, setLoading, role } = useAuthStore();
@@ -47,21 +48,23 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        {session?.user ? (
-          role === 'admin' ? (
-            <AdminStack />
-          ) : (
-            selectedAnimal ? (
-              <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
+      <ToastProvider>
+        <NavigationContainer>
+          {session?.user ? (
+            role === 'admin' ? (
+              <AdminStack />
             ) : (
-              <UserStack onAnimalPress={setSelectedAnimal} />
+              selectedAnimal ? (
+                <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
+              ) : (
+                <UserStack onAnimalPress={setSelectedAnimal} />
+              )
             )
-          )
-        ) : (
-          <AuthStack />
-        )}
-      </NavigationContainer>
+          ) : (
+            <AuthStack />
+          )}
+        </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

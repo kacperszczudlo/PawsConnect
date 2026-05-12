@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { ChevronLeft, Camera } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Animal, useShelterStore } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { uploadAnimalImage } from '../../services/imageService';
+import { useToast } from '../../context/ToastContext';
 
 export const AddAnimalScreen = () => {
   const navigation = useNavigation();
+  const { showToast } = useToast();
   const route = useRoute<any>();
   const editingAnimal = route.params?.animal as Animal | undefined;
   const { addAnimal, updateAnimal, fetchAnimals } = useShelterStore();
@@ -69,12 +71,16 @@ export const AddAnimalScreen = () => {
 
   const handlePublish = async () => {
     if (!name) {
-      Alert.alert('Brak danych', 'Proszę podać przynajmniej imię zwierzaka.');
+      showToast({ type: 'info', title: 'Brak danych', message: 'Proszę podać przynajmniej imię zwierzaka.' });
       return;
     }
 
     if (!adminShelterName.trim() || !adminAddress.trim() || !adminPhone.trim() || !adminEmail.trim()) {
-      Alert.alert('Brak danych', 'Uzupełnij dane schroniska w Ustawieniach (nazwa, adres, telefon, e-mail).');
+      showToast({
+        type: 'info',
+        title: 'Brak danych',
+        message: 'Uzupełnij dane schroniska w Ustawieniach (nazwa, adres, telefon, e-mail).',
+      });
       return;
     }
 
@@ -85,20 +91,20 @@ export const AddAnimalScreen = () => {
       try {
         const uploadedUrl = await uploadAnimalImage(imageAsset, user?.id || 'unknown');
         if (!uploadedUrl) {
-          Alert.alert('Błąd', 'Nie udało się wgrać zdjęcia. Spróbuj ponownie.');
+          showToast({ type: 'error', title: 'Błąd', message: 'Nie udało się wgrać zdjęcia. Spróbuj ponownie.' });
           setIsUploading(false);
           return;
         }
         finalImageUrl = uploadedUrl;
       } catch (error) {
-        Alert.alert('Błąd', 'Błąd podczas wgrywania zdjęcia.');
+        showToast({ type: 'error', title: 'Błąd', message: 'Błąd podczas wgrywania zdjęcia.' });
         setIsUploading(false);
         return;
       }
     }
 
     if (!finalImageUrl && !editingAnimal) {
-      Alert.alert('Brak zdjęcia', 'Dodaj zdjęcie zwierzaka przed publikacją.');
+      showToast({ type: 'info', title: 'Brak zdjęcia', message: 'Dodaj zdjęcie zwierzaka przed publikacją.' });
       setIsUploading(false);
       return;
     }
@@ -126,17 +132,24 @@ export const AddAnimalScreen = () => {
         : await addAnimal(payload);
 
       if (!success) {
-        Alert.alert('Błąd', editingAnimal ? 'Nie udało się zaktualizować ogłoszenia.' : 'Nie udało się opublikować ogłoszenia.');
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: editingAnimal ? 'Nie udało się zaktualizować ogłoszenia.' : 'Nie udało się opublikować ogłoszenia.',
+        });
         setIsUploading(false);
         return;
       }
 
       await fetchAnimals();
-      Alert.alert('Sukces!', editingAnimal ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.');
+      showToast({
+        type: 'success',
+        message: editingAnimal ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.',
+      });
       setIsUploading(false);
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Błąd', error?.message ?? 'Wystąpił błąd podczas zapisu ogłoszenia.');
+      showToast({ type: 'error', title: 'Błąd', message: error?.message ?? 'Wystąpił błąd podczas zapisu ogłoszenia.' });
       setIsUploading(false);
     }
   };

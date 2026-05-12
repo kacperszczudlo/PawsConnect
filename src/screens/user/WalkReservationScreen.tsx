@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronLeft, Send, PawPrint } from 'lucide-react-native';
 import { Animal } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { supabase } from '../../services/supabase';
+import { useToast } from '../../context/ToastContext';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -20,6 +21,7 @@ interface Props {
 
 export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
   const user = useAuthStore((state) => state.user);
+  const { showToast } = useToast();
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,12 +57,12 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
 
   const handleSubmit = async () => {
     if (!user?.id) {
-      Alert.alert('Błąd', 'Musisz być zalogowany, aby zarezerwować spacer.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Musisz być zalogowany, aby zarezerwować spacer.' });
       return;
     }
 
     if (!date || !time) {
-      Alert.alert('Uzupełnij formularz', 'Podaj datę i godzinę spaceru.');
+      showToast({ type: 'info', title: 'Uzupełnij formularz', message: 'Podaj datę i godzinę spaceru.' });
       return;
     }
 
@@ -82,11 +84,11 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Błąd', `Nie udało się zapisać spaceru: ${error.message}`);
+      showToast({ type: 'error', title: 'Błąd', message: `Nie udało się zapisać spaceru: ${error.message}` });
       return;
     }
 
-    Alert.alert('Sukces', 'Rezerwacja spaceru została wysłana.');
+    showToast({ type: 'success', message: 'Rezerwacja spaceru została wysłana.' });
     onSuccess();
   };
 
