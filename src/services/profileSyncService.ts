@@ -171,15 +171,18 @@ export const syncProfileEverywhere = async (draft: ProfileSyncDraft): Promise<Us
     const knownApplicationIds = uniqueNonEmpty(
       useShelterStore
         .getState()
-        .applications.filter((application) =>
-          matchesOwnedRow({
+        .applications.filter((application) => {
+          if (application.shelterUserId && application.shelterUserId !== draft.user.id) {
+            return false;
+          }
+          return matchesOwnedRow({
             shelterEmail: application.shelterEmail,
             shelterName: application.shelterName,
             shelterPhone: application.shelterPhone,
             shelterAddress: application.shelterAddress,
             city: undefined,
-          }),
-        )
+          });
+        })
         .map((application) => application.id),
     );
 
@@ -270,6 +273,10 @@ export const syncProfileEverywhere = async (draft: ProfileSyncDraft): Promise<Us
       });
 
       const applications = state.applications.map((application) => {
+        if (application.shelterUserId && application.shelterUserId !== draft.user.id) {
+          return application;
+        }
+
         const matches =
           (application.shelterEmail ?? '').trim() === previousEmail ||
           (application.shelterName ?? '').trim() === previousShelterName ||

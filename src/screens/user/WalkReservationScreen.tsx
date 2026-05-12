@@ -68,18 +68,25 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
 
     setLoading(true);
     const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
-    const { error } = await supabase.from('applications').insert([
-      {
-        animal_id: animal.id,
-        animal_name: animal.name,
-        applicant_id: user.id,
-        applicant_name: applicantName,
-        type: 'Spacer',
-        date: `${date} ${time}`,
-        status: 'Oczekujące',
-        ...buildShelterSnapshot(animal),
-      },
-    ]);
+    const row: Record<string, unknown> = {
+      animal_id: animal.id,
+      animal_name: animal.name,
+      applicant_id: user.id,
+      applicant_name: applicantName,
+      type: 'Spacer',
+      date: `${date} ${time}`,
+      status: 'Oczekujące',
+      ...buildShelterSnapshot(animal),
+    };
+    if (animal.shelterUserId) {
+      row.shelter_user_id = animal.shelterUserId;
+    }
+
+    let { error } = await supabase.from('applications').insert([row]);
+    if (error?.code === '42703' && row.shelter_user_id != null) {
+      delete row.shelter_user_id;
+      ({ error } = await supabase.from('applications').insert([row]));
+    }
 
     setLoading(false);
 

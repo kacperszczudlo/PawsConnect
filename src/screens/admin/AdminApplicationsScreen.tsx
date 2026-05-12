@@ -1,12 +1,20 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { PawPrint, Calendar, Home, Check, X } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { useShelterStore } from '../../store/useShelterStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { canShelterManageApplication } from '../../utils/shelterAnimalOwnership';
 
 export const AdminApplicationsScreen = () => {
+  const user = useAuthStore((state) => state.user);
   const { applications, fetchApplications, updateApplicationStatus } = useShelterStore();
+
+  const myApplications = useMemo(
+    () => applications.filter((app) => canShelterManageApplication(app, user)),
+    [applications, user],
+  );
 
   useEffect(() => {
     void fetchApplications();
@@ -41,7 +49,7 @@ export const AdminApplicationsScreen = () => {
       </View>
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 24 }} contentContainerStyle={{ paddingBottom: 24 }}>
-        {applications.map((app) => (
+        {myApplications.map((app) => (
           <View key={app.id} style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 1, elevation: 1, borderWidth: 1, borderColor: '#f1f5f9' }}>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f8fafc' }}>

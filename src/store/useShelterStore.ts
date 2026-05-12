@@ -11,6 +11,8 @@ export interface Application {
   applicantName: string;
   date: string;
   status: AppStatus;
+  /** Konto schroniska — właściciel zwierzęcia przy złożeniu wniosku */
+  shelterUserId?: string;
   shelterName?: string;
   shelterAddress?: string;
   shelterPhone?: string;
@@ -84,6 +86,21 @@ const serializeAnimal = (animal: Omit<Animal, 'id'>) => ({
 
 const ANIMALS_LIST_SELECT =
   'id,name,city,shelter_user_id,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color';
+
+const normalizeApplication = (row: any): Application => ({
+  id: String(row.id),
+  type: row.type === 'Spacer' ? 'Spacer' : 'Adopcja',
+  animalId: row.animal_id ? String(row.animal_id) : undefined,
+  animalName: row.animal_name ?? row.animalName ?? 'Nieznane zwierzę',
+  applicantName: row.applicant_name ?? row.applicantName ?? 'Nieznany użytkownik',
+  date: row.date ?? row.created_at ?? '',
+  status: (row.status as AppStatus) ?? 'Oczekujące',
+  shelterUserId: row.shelter_user_id != null ? String(row.shelter_user_id) : undefined,
+  shelterName: row.shelter_name ?? row.shelterName ?? undefined,
+  shelterAddress: row.shelter_address ?? row.shelterAddress ?? undefined,
+  shelterPhone: row.shelter_phone ?? row.shelterPhone ?? undefined,
+  shelterEmail: row.shelter_email ?? row.shelterEmail ?? undefined,
+});
 
 const formatError = (error: unknown) => {
   if (error instanceof Error) {
@@ -279,47 +296,171 @@ export const useShelterStore = create<ShelterState>((set) => ({
     }
   },
 
-  // POBIERANIE WNIOSKÓW Z BAZY
+  // POBIERANIE WNIOSKÓW Z BAZY (tylko własne schroniska)
   fetchApplications: async () => {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (error || !data) {
-      console.error('Błąd pobierania wniosków:', error);
+    if (!user?.id) {
+      set({ applications: [] });
       return;
     }
 
-    const mapped: Application[] = data.map((row: any) => ({
-      id: String(row.id),
-      type: row.type === 'Spacer' ? 'Spacer' : 'Adopcja',
-      animalId: row.animal_id ? String(row.animal_id) : undefined,
-      animalName: row.animal_name ?? row.animalName ?? 'Nieznane zwierzę',
-      applicantName: row.applicant_name ?? row.applicantName ?? 'Nieznany użytkownik',
-      date: row.date ?? row.created_at ?? '',
-      status: (row.status as AppStatus) ?? 'Oczekujące',
-      shelterName: row.shelter_name ?? row.shelterName ?? undefined,
-      shelterAddress: row.shelter_address ?? row.shelterAddress ?? undefined,
-      shelterPhone: row.shelter_phone ?? row.shelterPhone ?? undefined,
-      shelterEmail: row.shelter_email ?? row.shelterEmail ?? undefined,
-    }));
+    const emailTrimmed = user.email?.trim() ?? '';
 
-    set({ applications: mapped });
+    const owned = await supabase
+      .from('applications')
+      .select('*')
+      .eq('shelter_user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    const shelterUserIdMissing = owned.error?.code === '42703';
+
+    let rows: any[] = owned.data ?? [];
+
+    if (owned.error && !shelterUserIdMissing) {
+      console.error('Błąd pobierania wniosków:', owned.error);
+      set({ applications: [] });
+      return;
+    }
+
+    // Baza bez kolumny shelter_user_id — ta sama logika co wcześniej: dopasowanie po e-mailu schroniska w wierszu.
+    if (shelterUserIdMissing) {
+      if (!emailTrimmed) {
+        console.warn(
+          'Brak kolumny applications.shelter_user_id i brak e-maila konta — dodaj migrację lub ustaw e-mail schroniska.',
+        );
+        set({ applications: [] });
+        return;
+      }
+
+      const byEmail = await supabase
+        .from('applications')
+        .select('*')
+        .eq('shelter_email', emailTrimmed)
+        .order('created_at', { ascending: false });
+
+      if (byEmail.error) {
+        console.error('Błąd pobierania wniosków:', byEmail.error);
+        set({ applications: [] });
+        return;
+      }
+
+      set({ applications: (byEmail.data ?? []).map(normalizeApplication) });
+      return;
+    }
+
+    if (emailTrimmed) {
+      const legacy = await supabase
+        .from('applications')
+        .select('*')
+        .is('shelter_user_id', null)
+        .eq('shelter_email', emailTrimmed)
+        .order('created_at', { ascending: false });
+
+      if (!legacy.error && legacy.data?.length) {
+        const seen = new Set(rows.map((r) => String(r.id)));
+        for (const r of legacy.data) {
+          const rid = String(r.id);
+          if (!seen.has(rid)) {
+            rows.push(r);
+            seen.add(rid);
+          }
+        }
+        rows.sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+        );
+      } else if (legacy.error) {
+        console.warn('Błąd pobierania starszych wniosków:', legacy.error);
+      }
+    }
+
+    set({ applications: rows.map(normalizeApplication) });
   },
 
   // AKTUALIZACJA STATUSU WNIOSKU W BAZIE
   updateApplicationStatus: async (id, status) => {
-    const { error } = await supabase.from('applications').update({ status }).eq('id', id);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) {
+      console.error('Błąd aktualizacji wniosku: brak zalogowanego użytkownika.');
+      return;
+    }
+
+    const emailTrimmed = user.email?.trim() ?? '';
+
+    const owned = await supabase
+      .from('applications')
+      .update({ status })
+      .eq('id', id)
+      .eq('shelter_user_id', user.id)
+      .select('id');
+
+    let updated = (owned.data?.length ?? 0) > 0;
+    let error = owned.error;
+
+    // Brak kolumny shelter_user_id w PostgreSQL — aktualizuj tylko po dopasowanym shelter_email.
+    if (error?.code === '42703') {
+      error = null;
+      updated = false;
+      if (!emailTrimmed) {
+        console.warn(
+          'Brak kolumny shelter_user_id i brak e-maila konta — uruchom migrację SQL lub ustaw e-mail schroniska.',
+        );
+        return;
+      }
+
+      const fallback = await supabase
+        .from('applications')
+        .update({ status })
+        .eq('id', id)
+        .eq('shelter_email', emailTrimmed)
+        .select('id');
+
+      updated = (fallback.data?.length ?? 0) > 0;
+      error = fallback.error;
+    } else if (!error && !updated && emailTrimmed) {
+      const legacy = await supabase
+        .from('applications')
+        .update({ status, shelter_user_id: user.id })
+        .eq('id', id)
+        .is('shelter_user_id', null)
+        .eq('shelter_email', emailTrimmed)
+        .select('id');
+
+      if (legacy.error?.code === '42703') {
+        const fallbackLegacy = await supabase
+          .from('applications')
+          .update({ status })
+          .eq('id', id)
+          .eq('shelter_email', emailTrimmed)
+          .select('id');
+
+        updated = (fallbackLegacy.data?.length ?? 0) > 0;
+        error = fallbackLegacy.error;
+      } else {
+        updated = (legacy.data?.length ?? 0) > 0;
+        error = legacy.error;
+      }
+    }
 
     if (error) {
       console.error('Błąd aktualizacji statusu wniosku:', error);
       return;
     }
 
+    if (!updated) {
+      console.warn(`Aktualizacja wniosku nie zmieniła rekordu (id=${id}). Brak uprawnień.`);
+      return;
+    }
+
     set((state) => ({
       applications: state.applications.map((app) =>
-        app.id === id ? { ...app, status } : app,
+        app.id === id ? { ...app, status, shelterUserId: app.shelterUserId ?? user.id } : app,
       ),
     }));
   },

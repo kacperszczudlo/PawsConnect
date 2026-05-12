@@ -6,7 +6,7 @@ export type AnimalOwnershipFields = {
 };
 
 /**
- * Czy zalogowane schronisko może zarządzać ogłoszeniem (edycja / usunięcie).
+ * Czy zalogowane schronisko może zarządzać rekordem (ogłoszenie / wniosek).
  * Nowe rekordy: shelter_user_id === auth.uid().
  * Starsze bez owner id: dopasowanie e-maila konta do shelter_email wiersza.
  */
@@ -26,3 +26,6 @@ export const canShelterManageAnimal = (
   const rowEmail = animal.shelterEmail?.trim().toLowerCase() ?? '';
   return accountEmail.length > 0 && rowEmail === accountEmail;
 };
+
+/** Alias semantyczny — ta sama logika co przy ogłoszeniach. */
+export const canShelterManageApplication = canShelterManageAnimal;
