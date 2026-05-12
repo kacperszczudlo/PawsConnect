@@ -97,7 +97,7 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
           }
         : { role: 'user', full_name: normalizedName, phone: normalizedPhone };
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password: normalizedPassword,
         options: { data: metadata },
@@ -105,6 +105,13 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
 
       if (error) {
         showToast({ type: 'error', title: 'Błąd rejestracji', message: error.message });
+      } else if (data.session) {
+        // Bez potwierdzania e-maila Supabase od razu loguje — App.tsx przełącza na główny stack.
+        // Nawigacja do „Login” rzucałaby błąd, bo AuthStack już nie jest zamontowany.
+        showToast({
+          type: 'success',
+          message: 'Konto zostało utworzone. Witamy!',
+        });
       } else {
         showToast({
           type: 'success',
