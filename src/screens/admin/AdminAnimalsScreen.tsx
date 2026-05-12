@@ -3,14 +3,14 @@ import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } fr
 import { Plus, Trash2, Pencil, PawPrint } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useShelterStore } from '../../store/useShelterStore';
+import { useShelterAnimalsAdminListSlice } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { canShelterManageAnimal } from '../../utils/shelterAnimalOwnership';
 
 export const AdminAnimalsScreen = () => {
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
-  const { animals, removeAnimal, fetchAnimals, isLoading } = useShelterStore();
+  const { animals, removeAnimal, fetchAnimals, isLoading } = useShelterAnimalsAdminListSlice();
 
   const myAnimals = useMemo(
     () => animals.filter((animal) => canShelterManageAnimal(animal, user)),

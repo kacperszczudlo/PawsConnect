@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { syncProfileEverywhere } from '../services/profileSyncService';
+import { zustandProfileSyncShelterAdapter } from '../services/profileSync/zustandProfileSyncShelterAdapter';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
 import { useToast } from '../context/ToastContext';
 
@@ -44,17 +45,20 @@ export const PersonalDataScreen = () => {
         return;
       }
 
-      const updatedUser = await syncProfileEverywhere({
-        role: isShelter ? 'admin' : 'user',
-        user: user!,
-        fullName: name,
-        city,
-        phone: normalizedPhone,
-        email: user?.email || '',
-        avatarUrl: user?.user_metadata?.avatar_url || null,
-        shelterStreet,
-        shelterPostalCode: normalizedPostalCode,
-      });
+      const updatedUser = await syncProfileEverywhere(
+        {
+          role: isShelter ? 'admin' : 'user',
+          user: user!,
+          fullName: name,
+          city,
+          phone: normalizedPhone,
+          email: user?.email || '',
+          avatarUrl: user?.user_metadata?.avatar_url || null,
+          shelterStreet,
+          shelterPostalCode: normalizedPostalCode,
+        },
+        zustandProfileSyncShelterAdapter,
+      );
 
       setUser(updatedUser);
       showToast({ type: 'success', message: 'Dane zostały zaktualizowane.' });

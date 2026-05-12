@@ -3,7 +3,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, ActivityInd
 import { ChevronLeft, Camera } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { Animal, useShelterStore } from '../../store/useShelterStore';
+import { Animal, useShelterAnimalsFormActionsSlice } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { uploadAnimalImage } from '../../services/imageService';
 import { useToast } from '../../context/ToastContext';
@@ -17,7 +17,7 @@ export const AddAnimalScreen = () => {
   const guardOnline = useNetworkGuard();
   const route = useRoute<any>();
   const editingAnimal = route.params?.animal as Animal | undefined;
-  const { addAnimal, updateAnimal, fetchAnimals } = useShelterStore();
+  const { addAnimal, updateAnimal, fetchAnimals } = useShelterAnimalsFormActionsSlice();
   const { user } = useAuthStore();
   const adminCity = user?.user_metadata?.city || 'Nieznane';
   const adminShelterName = user?.user_metadata?.shelter_name || 'Schronisko';

@@ -4,7 +4,8 @@ import { Calendar, Clock, CheckCircle2, XCircle, Timer } from 'lucide-react-nati
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Animal } from '../../store/useShelterStore';
+import { applicationsRepository, animalsRepository } from '../../repositories';
+import type { ShelterAnimalLink } from '../../domain/shelter';
 
 interface UserApplication {
   id: string;
@@ -23,7 +24,7 @@ interface UserApplication {
 export const VisitsScreen = () => {
   const { user } = useAuthStore();
   const [visits, setVisits] = useState<UserApplication[]>([]);
-  const [animalsById, setAnimalsById] = useState<Record<string, Animal>>({});
+  const [animalsById, setAnimalsById] = useState<Record<string, ShelterAnimalLink>>({});
   const [mode, setMode] = useState<'upcoming' | 'history'>('upcoming');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,32 +38,22 @@ export const VisitsScreen = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('applicant_id', user.id)
-        .order('created_at', { ascending: false });
+      const data = await applicationsRepository.listRowsByApplicantId(user.id);
+      setVisits(data);
 
-      if (!error && data) {
-        setVisits(data);
-
-        const animalIds = Array.from(new Set(data.map((item) => item.animal_id).filter(Boolean)));
-        if (animalIds.length > 0) {
-          const { data: animalsData } = await supabase
-            .from('animals')
-            .select('id,city,shelter_name,shelter_address,shelter_phone,shelter_email')
-            .in('id', animalIds);
-
-          if (animalsData) {
-            const map: Record<string, Animal> = {};
-            animalsData.forEach((animal: Animal) => {
-              map[animal.id] = animal;
-            });
-            setAnimalsById(map);
-          }
-        } else {
-          setAnimalsById({});
-        }
+      const animalIds = Array.from(
+        new Set(
+          data
+            .map((item: { animal_id?: string | null }) => item.animal_id)
+            .filter((id): id is string => Boolean(id))
+            .map((id) => String(id)),
+        ),
+      );
+      if (animalIds.length > 0) {
+        const map = await animalsRepository.fetchShelterLinksByIds(animalIds);
+        setAnimalsById(map);
+      } else {
+        setAnimalsById({});
       }
     } catch {
       setVisits([]);

@@ -23,6 +23,7 @@ import { supabase } from '../services/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { CityPickerField } from '../components/CityPickerField';
 import { syncProfileEverywhere } from '../services/profileSyncService';
+import { zustandProfileSyncShelterAdapter } from '../services/profileSync/zustandProfileSyncShelterAdapter';
 import { uploadAvatarImage } from '../services/imageService';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
 import { useToast } from '../context/ToastContext';
@@ -175,18 +176,21 @@ export const SettingsScreen = ({ navigation }: any) => {
       }
 
       const nextEmail = user?.email || email.trim();
-      const updatedUser = await syncProfileEverywhere({
-        role: isShelter ? 'admin' : 'user',
-        user: user!,
-        fullName: name,
-        city,
-        phone: normalizedPhone,
-        email: nextEmail,
-        avatarUrl: finalAvatarUrl,
-        shelterStreet,
-        shelterPostalCode: normalizedPostalCode,
-        newPassword: newPassword || undefined,
-      });
+      const updatedUser = await syncProfileEverywhere(
+        {
+          role: isShelter ? 'admin' : 'user',
+          user: user!,
+          fullName: name,
+          city,
+          phone: normalizedPhone,
+          email: nextEmail,
+          avatarUrl: finalAvatarUrl,
+          shelterStreet,
+          shelterPostalCode: normalizedPostalCode,
+          newPassword: newPassword || undefined,
+        },
+        zustandProfileSyncShelterAdapter,
+      );
 
       setUser(updatedUser);
       setAvatarAsset(null);

@@ -19,12 +19,12 @@ import {
   CalendarCheck,
   PawPrint,
 } from 'lucide-react-native';
-import { Animal } from '../../store/useShelterStore';
+import { Animal } from '../../domain/shelter';
 import { WalkReservationScreen } from './WalkReservationScreen';
 import { AdoptionFormScreen } from './AdoptionFormScreen';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useFavoritesInteractionsSlice } from '../../store/useFavoritesStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { supabase } from '../../services/supabase';
+import { animalsRepository } from '../../repositories';
 import { formatAgeBySex } from '../../utils/animalLabels';
 import { useToast } from '../../context/ToastContext';
 
@@ -38,9 +38,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
   const [currentAnimal, setCurrentAnimal] = useState(animal);
   const user = useAuthStore((state) => state.user);
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+  const { favorites, toggleFavorite, fetchFavorites } = useFavoritesInteractionsSlice();
 
   useEffect(() => {
     setCurrentAnimal(animal);
@@ -51,34 +49,13 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 
     const loadAnimal = async () => {
       try {
-        const { data } = await supabase
-          .from('animals')
-          .select(
-            'id,name,city,shelter_user_id,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color',
-          )
-          .eq('id', animal.id)
-          .maybeSingle();
+        const loaded = await animalsRepository.fetchById(animal.id);
 
-        if (active && data) {
+        if (active && loaded) {
           setCurrentAnimal({
-            id: String(data.id),
-            name: data.name ?? animal.name,
-            city: data.city ?? animal.city,
-            shelterUserId: data.shelter_user_id != null ? String(data.shelter_user_id) : animal.shelterUserId,
-            shelterName: data.shelter_name ?? animal.shelterName,
-            shelterAddress: data.shelter_address ?? animal.shelterAddress,
-            shelterPhone: data.shelter_phone ?? animal.shelterPhone,
-            shelterEmail: data.shelter_email ?? animal.shelterEmail,
-            type: data.type ?? animal.type,
-            breed: data.breed ?? animal.breed,
-            age: data.age ?? animal.age,
-            description: data.description ?? animal.description,
-            image: data.image ?? animal.image,
-            sex: data.sex ?? animal.sex,
+            ...loaded,
             liked: animal.liked,
-            gender: animal.gender,
-            weight: data.weight ?? animal.weight,
-            color: data.color ?? animal.color,
+            gender: animal.gender ?? loaded.gender,
           });
         }
       } catch {

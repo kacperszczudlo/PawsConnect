@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { MapPin, Heart, PawPrint } from 'lucide-react-native';
-import { useShelterStore } from '../../store/useShelterStore';
-import { Animal } from '../../store/useShelterStore';
+import { Animal, useShelterAnimalsCatalogSlice } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useFavoritesInteractionsSlice } from '../../store/useFavoritesStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
@@ -29,11 +28,9 @@ const getShelterLocationLabel = (animal: Animal) => {
 export const FavoritesScreen = () => {
   const { showToast } = useToast();
   const { user } = useAuthStore();
-  const { animals, fetchAnimals } = useShelterStore();
+  const { animals, fetchAnimals } = useShelterAnimalsCatalogSlice();
   const [loading, setLoading] = useState(true);
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+  const { favorites, toggleFavorite, fetchFavorites } = useFavoritesInteractionsSlice();
 
   const handleToggleFavorite = async (animalId: string) => {
     const ok = await toggleFavorite(user?.id, animalId);

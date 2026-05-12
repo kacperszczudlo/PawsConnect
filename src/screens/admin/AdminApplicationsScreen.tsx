@@ -3,14 +3,14 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { PawPrint, Calendar, Home, Check, X } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
-import { useShelterStore, type AppStatus } from '../../store/useShelterStore';
+import { useShelterApplicationsAdminSlice, type AppStatus } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { canShelterManageApplication } from '../../utils/shelterAnimalOwnership';
 import { useToast } from '../../context/ToastContext';
 
 export const AdminApplicationsScreen = () => {
   const user = useAuthStore((state) => state.user);
-  const { applications, fetchApplications, updateApplicationStatus } = useShelterStore();
+  const { applications, fetchApplications, updateApplicationStatus } = useShelterApplicationsAdminSlice();
   const { showToast } = useToast();
 
   const handleUpdateStatus = useCallback(

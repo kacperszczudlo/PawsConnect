@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronLeft, Send, PawPrint } from 'lucide-react-native';
-import { Animal } from '../../store/useShelterStore';
+import { Animal } from '../../domain/shelter';
 import { useAuthStore } from '../../store/useAuthStore';
-import { supabase } from '../../services/supabase';
+import { applicationsRepository } from '../../repositories';
 import { useToast } from '../../context/ToastContext';
 import { useNetworkGuard } from '../../context/NetworkContext';
 import { friendlyErrorMessage } from '../../utils/networkErrors';
@@ -85,19 +85,16 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
       row.shelter_user_id = animal.shelterUserId;
     }
 
-    let { error } = await supabase.from('applications').insert([row]);
-    if (error?.code === '42703' && row.shelter_user_id != null) {
-      delete row.shelter_user_id;
-      ({ error } = await supabase.from('applications').insert([row]));
-    }
+    const result = await applicationsRepository.submitUserApplication(row);
 
     setLoading(false);
 
-    if (error) {
+    if (!result.ok) {
+      const err = result.error as { message?: string };
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: friendlyErrorMessage(error, `Nie udało się zapisać spaceru: ${error.message}`),
+        message: friendlyErrorMessage(result.error, `Nie udało się zapisać spaceru: ${err?.message ?? ''}`),
       });
       return;
     }
