@@ -21,6 +21,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../services/supabase';
 import { useAuthStore } from '../store/useAuthStore';
+import { ALL_POLAND_CITY_LABEL } from '../constants/cities';
 import { CityPickerField } from '../components/CityPickerField';
 import { syncProfileEverywhere } from '../services/profileSyncService';
 import { zustandProfileSyncShelterAdapter } from '../services/profileSync/zustandProfileSyncShelterAdapter';
@@ -70,7 +71,7 @@ export const SettingsScreen = ({ navigation }: any) => {
   const [name, setName] = useState(
     isShelter ? user?.user_metadata?.shelter_name : user?.user_metadata?.full_name || '',
   );
-  const [city, setCity] = useState(user?.user_metadata?.city || 'Cała Polska');
+  const [city, setCity] = useState(user?.user_metadata?.city || ALL_POLAND_CITY_LABEL);
   const [phone, setPhone] = useState(user?.user_metadata?.phone || '');
   const [shelterStreet, setShelterStreet] = useState(user?.user_metadata?.shelter_street || '');
   const [shelterPostalCode, setShelterPostalCode] = useState(user?.user_metadata?.shelter_postal_code || '');
