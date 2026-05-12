@@ -69,14 +69,33 @@ export const zustandProfileSyncShelterAdapter: ProfileSyncShelterPort = {
     }));
   },
 
-  applyUserApplicantNameLocalSync: ({ originalFullName, nextName }) => {
+  applyUserApplicantNameLocalSync: ({
+    userId,
+    originalFullName,
+    nextName,
+    nextEmail,
+    nextPhone,
+    nextCity,
+    nextAvatarUrl,
+  }) => {
     useShelterApplicationsStore.setState((state) => ({
       ...state,
-      applications: state.applications.map((application) =>
-        application.applicantName === originalFullName || application.applicantName === nextName
-          ? { ...application, applicantName: nextName }
-          : application,
-      ),
+      applications: state.applications.map((application) => {
+        const idMatch = application.applicantId === userId;
+        const nameMatch =
+          application.applicantName === originalFullName || application.applicantName === nextName;
+        if (!idMatch && !nameMatch) {
+          return application;
+        }
+        return {
+          ...application,
+          applicantName: nextName,
+          applicantEmail: nextEmail,
+          applicantPhone: nextPhone,
+          applicantCity: nextCity,
+        applicantAvatarUrl: nextAvatarUrl?.trim() || undefined,
+        };
+      }),
     }));
   },
 

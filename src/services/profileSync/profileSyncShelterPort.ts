@@ -22,6 +22,14 @@ export interface ProfileSyncShelterPort {
   getAnimals: () => Animal[];
   getApplications: () => Application[];
   applyAdminProfileLocalSync: (args: AdminProfileLocalSyncArgs) => void;
-  applyUserApplicantNameLocalSync: (args: { originalFullName: string; nextName: string }) => void;
+  applyUserApplicantNameLocalSync: (args: {
+    userId: string;
+    originalFullName: string;
+    nextName: string;
+    nextEmail: string;
+    nextPhone: string;
+    nextCity: string;
+    nextAvatarUrl: string | null;
+  }) => void;
   refreshShelterLists: () => Promise<void>;
 }

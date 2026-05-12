@@ -7,6 +7,7 @@ import { applicationsRepository } from '../../repositories';
 import { useToast } from '../../context/ToastContext';
 import { useNetworkGuard } from '../../context/NetworkContext';
 import { friendlyErrorMessage } from '../../utils/networkErrors';
+import { buildApplicantApplicationFields } from '../../utils/buildApplicantApplicationFields';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -70,15 +71,14 @@ export const WalkReservationScreen = ({ animal, onBack, onSuccess }: Props) => {
     }
 
     setLoading(true);
-    const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
     const row: Record<string, unknown> = {
       animal_id: animal.id,
       animal_name: animal.name,
       applicant_id: user.id,
-      applicant_name: applicantName,
       type: 'Spacer',
       date: `${date} ${time}`,
       status: 'Oczekujące',
+      ...buildApplicantApplicationFields(user),
       ...buildShelterSnapshot(animal),
     };
     if (animal.shelterUserId) {

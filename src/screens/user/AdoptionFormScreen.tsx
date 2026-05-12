@@ -7,6 +7,7 @@ import { applicationsRepository } from '../../repositories';
 import { useToast } from '../../context/ToastContext';
 import { useNetworkGuard } from '../../context/NetworkContext';
 import { friendlyErrorMessage } from '../../utils/networkErrors';
+import { buildApplicantApplicationFields } from '../../utils/buildApplicantApplicationFields';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -48,16 +49,14 @@ export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
     }
 
     setLoading(true);
-    const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
-    const dateLabel = new Date().toLocaleDateString('pl-PL');
     const row: Record<string, unknown> = {
       animal_id: animal.id,
       animal_name: animal.name,
       applicant_id: user.id,
-      applicant_name: applicantName,
       type: 'Adopcja',
-      date: dateLabel,
       status: 'Oczekujące',
+      date: '',
+      ...buildApplicantApplicationFields(user, { message: reason.trim() }),
       ...buildShelterSnapshot(animal),
     };
     if (animal.shelterUserId) {
@@ -121,9 +120,7 @@ export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
         </View>
 
         <View style={[styles.infoNote, { borderLeftColor: '#f97316' }]}>
-          <Text style={styles.infoText}>
-            Po wysłaniu wniosku nasi pracownicy skontaktują się z Tobą w ciągu 3 dni roboczych.
-          </Text>
+          <Text style={styles.infoText}>Odezwą się do Ciebie w ciągu 3 dni roboczych.</Text>
         </View>
 
         <View style={[styles.infoNote, { borderLeftColor: '#10b981', marginTop: 14 }] }>

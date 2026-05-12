@@ -7,14 +7,24 @@ export const syncUserApplicantRowsInApplications = async (params: {
   identity: ProfileSyncIdentity;
 }): Promise<void> => {
   const { applicantUserId, identity } = params;
-  const { nextName, originalFullName } = identity;
+  const { originalFullName } = identity;
 
   const { errors } = await runBatchUpdates([
-    supabase.from('applications').update({ applicant_name: nextName }).eq('applicant_id', applicantUserId).select('id'),
+    supabase
+      .from('applications')
+      .update({
+        applicant_name: identity.nextName,
+        applicant_email: identity.nextEmail,
+        applicant_phone: identity.nextPhone,
+        applicant_city: identity.nextCity,
+        applicant_avatar_url: identity.nextAvatarUrl ?? '',
+      })
+      .eq('applicant_id', applicantUserId)
+      .select('id'),
     originalFullName
       ? supabase
           .from('applications')
-          .update({ applicant_name: nextName })
+          .update({ applicant_name: identity.nextName })
           .eq('applicant_name', originalFullName)
           .select('id')
       : null,

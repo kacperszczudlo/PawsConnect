@@ -16,9 +16,17 @@ export interface Application {
   type: 'Adopcja' | 'Spacer';
   animalName: string;
   animalId?: string;
+  applicantId?: string;
   applicantName: string;
+  applicantEmail?: string;
+  applicantPhone?: string;
+  applicantCity?: string;
+  applicantAvatarUrl?: string;
+  /** Uzasadnienie adopcji lub inna treść od wnioskującego. */
+  applicantMessage?: string;
   date: string;
   status: AppStatus;
+  createdAt?: string;
   shelterUserId?: string;
   shelterName?: string;
   shelterAddress?: string;
@@ -117,20 +125,37 @@ export const serializeAnimal = (animal: Omit<Animal, 'id'>) => ({
   color: animal.color,
 });
 
-export const normalizeApplication = (row: any): Application => ({
-  id: String(row.id),
-  type: row.type === 'Spacer' ? 'Spacer' : 'Adopcja',
-  animalId: row.animal_id ? String(row.animal_id) : undefined,
-  animalName: row.animal_name ?? row.animalName ?? 'Nieznane zwierzę',
-  applicantName: row.applicant_name ?? row.applicantName ?? 'Nieznany użytkownik',
-  date: row.date ?? row.created_at ?? '',
-  status: (row.status as AppStatus) ?? 'Oczekujące',
-  shelterUserId: row.shelter_user_id != null ? String(row.shelter_user_id) : undefined,
-  shelterName: row.shelter_name ?? row.shelterName ?? undefined,
-  shelterAddress: row.shelter_address ?? row.shelterAddress ?? undefined,
-  shelterPhone: row.shelter_phone ?? row.shelterPhone ?? undefined,
-  shelterEmail: row.shelter_email ?? row.shelterEmail ?? undefined,
-});
+export const normalizeApplication = (row: any): Application => {
+  const rawDate = row.date ?? row.date_label;
+  const dateStr =
+    rawDate != null && String(rawDate).trim() !== ''
+      ? String(rawDate)
+      : row.type === 'Spacer'
+        ? String(row.created_at ?? '')
+        : '';
+
+  return {
+    id: String(row.id),
+    type: row.type === 'Spacer' ? 'Spacer' : 'Adopcja',
+    animalId: row.animal_id ? String(row.animal_id) : undefined,
+    animalName: row.animal_name ?? row.animalName ?? 'Nieznane zwierzę',
+    applicantId: row.applicant_id != null ? String(row.applicant_id) : undefined,
+    applicantName: row.applicant_name ?? row.applicantName ?? 'Nieznany użytkownik',
+    applicantEmail: row.applicant_email ?? row.applicantEmail ?? undefined,
+    applicantPhone: row.applicant_phone ?? row.applicantPhone ?? undefined,
+    applicantCity: row.applicant_city ?? row.applicantCity ?? undefined,
+    applicantAvatarUrl: row.applicant_avatar_url ?? row.applicantAvatarUrl ?? undefined,
+    applicantMessage: row.applicant_message ?? row.applicantMessage ?? undefined,
+    date: dateStr,
+    status: (row.status as AppStatus) ?? 'Oczekujące',
+    createdAt: row.created_at != null ? String(row.created_at) : undefined,
+    shelterUserId: row.shelter_user_id != null ? String(row.shelter_user_id) : undefined,
+    shelterName: row.shelter_name ?? row.shelterName ?? undefined,
+    shelterAddress: row.shelter_address ?? row.shelterAddress ?? undefined,
+    shelterPhone: row.shelter_phone ?? row.shelterPhone ?? undefined,
+    shelterEmail: row.shelter_email ?? row.shelterEmail ?? undefined,
+  };
+};
 
 export const mapRowToShelterAnimalLink = (row: any): ShelterAnimalLink => ({
   id: String(row.id),

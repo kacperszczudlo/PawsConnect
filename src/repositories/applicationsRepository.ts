@@ -1,6 +1,37 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppStatus, Application, UpdateApplicationStatusResult } from '../domain/shelter';
 import { normalizeApplication } from '../domain/shelter';
+import { APPLICANT_OPTIONAL_INSERT_KEYS, isSchemaOrMissingColumnError } from '../utils/supabaseColumnErrors';
+
+const mergeRowWithApplicantSnapshot = async (client: SupabaseClient, row: any): Promise<any> => {
+  if (!row?.id || !row?.applicant_id) {
+    return row;
+  }
+
+  const { data, error } = await client.rpc('shelter_application_applicant_snapshot', {
+    p_application_id: row.id,
+  });
+
+  if (error || data == null || typeof data !== 'object') {
+    return row;
+  }
+
+  const s = data as Record<string, unknown>;
+  const pick = (rowVal: unknown, snapVal: unknown) => {
+    const a = rowVal != null && String(rowVal).trim() !== '' ? String(rowVal).trim() : '';
+    const b = snapVal != null && String(snapVal).trim() !== '' ? String(snapVal).trim() : '';
+    return a || b || rowVal;
+  };
+
+  return {
+    ...row,
+    applicant_email: pick(row.applicant_email, s.email),
+    applicant_phone: pick(row.applicant_phone, s.phone),
+    applicant_city: pick(row.applicant_city, s.city),
+    applicant_avatar_url: pick(row.applicant_avatar_url, s.avatar_url),
+    applicant_name: pick(row.applicant_name, s.full_name) || row.applicant_name,
+  };
+};
 
 export interface ApplicationsRepository {
   listForShelterAccount(params: { userId: string; emailTrimmed: string }): Promise<Application[]>;
@@ -24,8 +55,16 @@ export interface ApplicationsRepository {
     status: AppStatus;
     userId: string;
     emailTrimmed: string;
+    /** Ustawiane przy akceptacji adopcji (termin spotkania). `null` czyści pole. Brak klucza = bez zmiany `date`. */
+    meetingDate?: string | null;
   }): Promise<UpdateApplicationStatusResult>;
 }
+
+const stripApplicantOptionalInsertFields = (row: Record<string, unknown>) => {
+  for (const k of APPLICANT_OPTIONAL_INSERT_KEYS) {
+    delete row[k];
+  }
+};
 
 export const createApplicationsRepository = (client: SupabaseClient): ApplicationsRepository => ({
   async listForShelterAccount({ userId, emailTrimmed }) {
@@ -63,10 +102,8 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
         return [];
       }
 
-      return (byEmail.data ?? []).map(normalizeApplication);
-    }
-
-    if (emailTrimmed) {
+      rows = byEmail.data ?? [];
+    } else if (emailTrimmed) {
       const legacy = await client
         .from('applications')
         .select('*')
@@ -92,7 +129,12 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
       }
     }
 
-    return rows.map(normalizeApplication);
+    const enriched: any[] = [];
+    for (const r of rows) {
+      enriched.push(await mergeRowWithApplicantSnapshot(client, r));
+    }
+
+    return enriched.map(normalizeApplication);
   },
 
   async listRowsByApplicantId(applicantId: string) {
@@ -110,15 +152,40 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
 
   async submitUserApplication(row) {
     const insertRow: Record<string, unknown> = { ...row };
-    let { error } = await client.from('applications').insert([insertRow]);
-    if (error && (error as { code?: string }).code === '42703' && insertRow.shelter_user_id != null) {
-      delete insertRow.shelter_user_id;
-      ({ error } = await client.from('applications').insert([insertRow]));
-    }
-    if (error) {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { error } = await client.from('applications').insert([insertRow]);
+      if (!error) {
+        return { ok: true as const };
+      }
+
+      lastError = error;
+      const err = error as { code?: string; message?: string };
+      const msg = (err.message ?? '').toLowerCase();
+
+      if (err.code === '42703' && insertRow.shelter_user_id != null && msg.includes('shelter_user_id')) {
+        delete insertRow.shelter_user_id;
+        continue;
+      }
+
+      if (isSchemaOrMissingColumnError(error)) {
+        let stripped = false;
+        for (const k of APPLICANT_OPTIONAL_INSERT_KEYS) {
+          if (k in insertRow) {
+            delete insertRow[k];
+            stripped = true;
+          }
+        }
+        if (stripped) {
+          continue;
+        }
+      }
+
       return { ok: false as const, error };
     }
-    return { ok: true as const };
+
+    return { ok: false as const, error: lastError };
   },
 
   async getAcceptedWalkConflict({ animalId, date, excludeApplicationId }) {
@@ -152,10 +219,15 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
     return { ok: true, conflict: null };
   },
 
-  async updateStatusOwnedByShelter({ applicationId, status, userId, emailTrimmed }) {
+  async updateStatusOwnedByShelter({ applicationId, status, userId, emailTrimmed, meetingDate }) {
+    const patch: Record<string, unknown> = { status };
+    if (meetingDate !== undefined) {
+      patch.date = meetingDate;
+    }
+
     const owned = await client
       .from('applications')
-      .update({ status })
+      .update(patch)
       .eq('id', applicationId)
       .eq('shelter_user_id', userId)
       .select('id');
@@ -172,7 +244,7 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
 
       const fallback = await client
         .from('applications')
-        .update({ status })
+        .update(patch)
         .eq('id', applicationId)
         .eq('shelter_email', emailTrimmed)
         .select('id');
@@ -182,7 +254,7 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
     } else if (!error && !updated && emailTrimmed) {
       const legacy = await client
         .from('applications')
-        .update({ status, shelter_user_id: userId })
+        .update({ ...patch, shelter_user_id: userId })
         .eq('id', applicationId)
         .is('shelter_user_id', null)
         .eq('shelter_email', emailTrimmed)
@@ -191,7 +263,7 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
       if (legacy.error?.code === '42703') {
         const fallbackLegacy = await client
           .from('applications')
-          .update({ status })
+          .update(patch)
           .eq('id', applicationId)
           .eq('shelter_email', emailTrimmed)
           .select('id');

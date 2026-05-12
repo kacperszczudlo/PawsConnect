@@ -127,15 +127,34 @@ export const VisitsScreen = () => {
   };
 
   const filteredVisits = visits.filter((visit) => {
+    const isAdoption = visit.type === 'Adopcja';
+
+    if (isAdoption) {
+      if (visit.status === 'Odrzucone') {
+        return mode === 'history';
+      }
+      if (visit.status === 'Oczekujące') {
+        return mode === 'upcoming';
+      }
+      // Zaakceptowane: historia dopiero po minionym terminie spotkania (jeśli schronisko go ustawiło).
+      const event = parseVisitDate(visit.date?.trim() ?? '');
+      if (!event) {
+        return mode === 'upcoming';
+      }
+      const now = new Date();
+      if (mode === 'upcoming') {
+        return event.getTime() >= now.getTime();
+      }
+      return event.getTime() < now.getTime();
+    }
+
     const visitDate = parseVisitDate(visit.date);
     const now = new Date();
 
-    // Odrzucone traktujemy jako historię niezależnie od daty.
     if (visit.status === 'Odrzucone') {
       return mode === 'history';
     }
 
-    // Gdy data jest nieparsowalna, bezpiecznie pokazujemy element w nadchodzących.
     if (!visitDate) {
       return mode === 'upcoming';
     }
@@ -239,28 +258,58 @@ export const VisitsScreen = () => {
                   shadowRadius: 3,
                 }}
               >
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 10 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1e293b' }}>
                       {visit.type}: {visit.animal_name}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-                      <Clock size={14} color="#64748b" />
-                      <Text style={{ marginLeft: 6, color: '#64748b', fontSize: 13 }}>{visit.date}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 6 }}>
+                      {visit.type === 'Adopcja' && visit.status === 'Odrzucone' ? (
+                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20 }}>
+                          Wniosek odrzucony lub anulowany.
+                        </Text>
+                      ) : visit.type === 'Adopcja' && visit.status === 'Oczekujące' ? (
+                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20 }}>
+                          Kontakt ze schroniskiem w ciągu 3 dni roboczych.
+                        </Text>
+                      ) : visit.type === 'Adopcja' && visit.status === 'Zaakceptowane' && !visit.date?.trim() ? (
+                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20 }}>
+                          Zaakceptowano. Termin spotkania — ustal ze schroniskiem (kontakt poniżej).
+                        </Text>
+                      ) : (
+                        <>
+                          <Clock size={14} color="#64748b" style={{ marginTop: 2 }} />
+                          <Text style={{ marginLeft: 6, color: '#64748b', fontSize: 13, flex: 1, lineHeight: 20 }}>
+                            {visit.type === 'Adopcja' && visit.status === 'Zaakceptowane' && visit.date?.trim()
+                              ? visit.date.trim()
+                              : visit.type === 'Adopcja'
+                                ? visit.date?.trim() || '—'
+                                : visit.date}
+                          </Text>
+                        </>
+                      )}
                     </View>
                   </View>
                   <View
                     style={{
+                      flexShrink: 0,
+                      alignSelf: 'flex-start',
                       backgroundColor: style.bg,
-                      paddingHorizontal: 10,
+                      paddingHorizontal: 8,
                       paddingVertical: 6,
                       borderRadius: 10,
                       flexDirection: 'row',
                       alignItems: 'center',
+                      maxWidth: '46%',
                     }}
                   >
                     {style.icon}
-                    <Text style={{ marginLeft: 6, color: style.color, fontSize: 11, fontWeight: 'bold' }}>{visit.status}</Text>
+                    <Text
+                      style={{ marginLeft: 4, color: style.color, fontSize: 10, fontWeight: '700' }}
+                      numberOfLines={2}
+                    >
+                      {visit.status}
+                    </Text>
                   </View>
                 </View>
 

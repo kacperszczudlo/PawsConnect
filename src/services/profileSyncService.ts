@@ -20,8 +20,13 @@ export const syncProfileEverywhere = async (
   } else {
     await syncUserApplicantRowsInApplications({ applicantUserId: user.id, identity: plan.identity });
     shelterPort.applyUserApplicantNameLocalSync({
+      userId: user.id,
       originalFullName: plan.identity.originalFullName,
       nextName: plan.identity.nextName,
+      nextEmail: plan.identity.nextEmail,
+      nextPhone: plan.identity.nextPhone,
+      nextCity: plan.identity.nextCity,
+      nextAvatarUrl: plan.identity.nextAvatarUrl,
     });
   }
 

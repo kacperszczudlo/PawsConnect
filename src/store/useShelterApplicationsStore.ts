@@ -6,7 +6,11 @@ import type { AppStatus, Application, UpdateApplicationStatusResult } from '../d
 export interface ShelterApplicationsState {
   applications: Application[];
   fetchApplications: () => Promise<void>;
-  updateApplicationStatus: (id: string, status: AppStatus) => Promise<UpdateApplicationStatusResult>;
+  updateApplicationStatus: (
+    id: string,
+    status: AppStatus,
+    options?: { meetingDate?: string | null },
+  ) => Promise<UpdateApplicationStatusResult>;
 }
 
 export const useShelterApplicationsStore = create<ShelterApplicationsState>((set, get) => ({
@@ -30,7 +34,7 @@ export const useShelterApplicationsStore = create<ShelterApplicationsState>((set
     set({ applications });
   },
 
-  updateApplicationStatus: async (id, status) => {
+  updateApplicationStatus: async (id, status, options) => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -76,13 +80,23 @@ export const useShelterApplicationsStore = create<ShelterApplicationsState>((set
       status,
       userId: user.id,
       emailTrimmed,
+      meetingDate: options?.meetingDate,
     });
 
     if (result.ok) {
       set((state) => ({
-        applications: state.applications.map((app) =>
-          app.id === id ? { ...app, status, shelterUserId: app.shelterUserId ?? user.id } : app,
-        ),
+        applications: state.applications.map((app) => {
+          if (app.id !== id) {
+            return app;
+          }
+          const nextDate =
+            options?.meetingDate !== undefined
+              ? options.meetingDate === null || options.meetingDate === ''
+                ? ''
+                : options.meetingDate
+              : app.date;
+          return { ...app, status, date: nextDate, shelterUserId: app.shelterUserId ?? user.id };
+        }),
       }));
     } else if (result.reason === 'not_found') {
       console.warn(`Aktualizacja wniosku nie zmieniła rekordu (id=${id}). Brak uprawnień.`);
