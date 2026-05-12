@@ -1,6 +1,5 @@
 import type { User } from '@supabase/supabase-js';
 
-/** Pola wnioskującego zapisywane razem z wierszem `applications` (snake_case → Supabase). */
 export function buildApplicantApplicationFields(user: User, options?: { message?: string }) {
   const md = user.user_metadata ?? {};
   const fullName = (md.full_name ?? '').toString().trim();

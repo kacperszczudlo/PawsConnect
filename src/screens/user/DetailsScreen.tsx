@@ -72,13 +72,18 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
     };
   }, [animal]);
 
+  const locationText =
+    currentAnimal.shelterName && currentAnimal.shelterAddress
+      ? `${currentAnimal.shelterName} • ${currentAnimal.shelterAddress}`
+      : currentAnimal.shelterName || (currentAnimal.city ? `Schronisko • ${currentAnimal.city}` : 'Schronisko');
+
   const handleToggleFavorite = async () => {
     const ok = await toggleFavorite(user?.id, animal.id);
     if (!ok) {
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).',
+        message: 'Nie udało się zapisać w ulubionych. Sprawdź połączenie z internetem i spróbuj ponownie.',
       });
     }
   };
@@ -96,16 +101,16 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 
     const introLine = descriptionSnippet
       ? `${currentAnimal.name} czeka na dom. ${descriptionSnippet}${descriptionSnippet.length >= 220 ? '...' : ''}`
-      : `${currentAnimal.name} czeka na kochajacy dom i odpowiedzialnego opiekuna.`;
+      : `${currentAnimal.name} czeka na kochający dom i odpowiedzialnego opiekuna.`;
 
     const lines = [
-      `OGLOSZENIE ADOPCYJNE - ${currentAnimal.name}`,
+      `OGŁOSZENIE ADOPCYJNE — ${currentAnimal.name}`,
       introLine,
       '',
-      'Najwazniejsze informacje:',
+      'Najważniejsze informacje:',
       `Typ: ${typeLabel}`,
       `Rasa: ${breedLabel}`,
-      `Plec: ${sexLabel}`,
+      `Płeć: ${sexLabel}`,
       `Wiek: ${shareAge}`,
       `Waga: ${weightLabel}`,
       `Lokalizacja: ${locationText}`,
@@ -114,9 +119,9 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
       currentAnimal.shelterPhone ? `Telefon: ${currentAnimal.shelterPhone}` : 'Telefon: Brak danych',
       currentAnimal.shelterEmail ? `E-mail: ${currentAnimal.shelterEmail}` : 'E-mail: Brak danych',
       '',
-      'Jesli chcesz poznac zwierzaka i dac mu dom, skontaktuj sie ze schroniskiem.',
+      'Jeśli chcesz poznać zwierzaka i dać mu dom, skontaktuj się ze schroniskiem.',
       '',
-      'Udostepnione z aplikacji PawsConnect.',
+      'Udostępnione z aplikacji PawsConnect.',
     ].filter(Boolean);
 
     return lines.join('\n');
@@ -138,10 +143,6 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
   };
 
   const formattedAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
-
-  const locationText = currentAnimal.shelterName && currentAnimal.shelterAddress
-    ? `${currentAnimal.shelterName} • ${currentAnimal.shelterAddress}`
-    : currentAnimal.shelterName || (currentAnimal.city ? `Schronisko • ${currentAnimal.city}` : 'Schronisko');
 
   useEffect(() => {
     if (user?.id) {

@@ -17,11 +17,9 @@ export const useFilterStore = create<FilterState>((set) => ({
   resetFilters: () => set({ selectedCity: 'Cała Polska', selectedType: null }),
 }));
 
-/** Home: tylko wartości filtrów (bez setterów). */
 export const useFilterSelectionSlice = () =>
   useFilterStore(useShallow((s) => ({ selectedCity: s.selectedCity, selectedType: s.selectedType })));
 
-/** Ekran filtrów: stan + akcje. */
 export const useFilterEditorSlice = () =>
   useFilterStore(
     useShallow((s) => ({

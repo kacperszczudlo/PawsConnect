@@ -322,7 +322,7 @@ export const SettingsScreen = ({ navigation }: any) => {
                   icon={<MapPin size={18} color="#64748b" style={{ marginRight: 8 }} />}
                   value={shelterStreet}
                   onChange={setShelterStreet}
-                  placeholder="Ulica testowa 1"
+                  placeholder="np. ul. Leśna 10"
                 />
 
                 <InputGroup

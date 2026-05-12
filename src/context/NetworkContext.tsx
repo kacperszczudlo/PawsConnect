@@ -24,7 +24,6 @@ function computeOffline(state: NetInfoState): boolean {
 }
 
 type NetworkContextValue = {
-  /** Brak sieci lub brak realnego dostępu do internetu (wg NetInfo). */
   isOffline: boolean;
 };
 
@@ -113,10 +112,6 @@ export function useNetwork(): NetworkContextValue {
   return ctx;
 }
 
-/**
- * Zwraca funkcję: jeśli jesteśmy offline — pokazuje toast i false.
- * Wywołaj na początku akcji wymagającej sieci (logowanie, zapis do Supabase).
- */
 export function useNetworkGuard(): () => boolean {
   const { isOffline } = useNetwork();
   const { showToast } = useToast();

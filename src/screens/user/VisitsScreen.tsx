@@ -107,7 +107,6 @@ export const VisitsScreen = () => {
   const parseVisitDate = (dateValue: string) => {
     const normalized = dateValue.trim();
 
-    // Format: DD.MM.RRRR HH:MM or DD.MM.RRRR
     const match = normalized.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
     if (match) {
       const day = Number(match[1]);
@@ -136,7 +135,6 @@ export const VisitsScreen = () => {
       if (visit.status === 'Oczekujące') {
         return mode === 'upcoming';
       }
-      // Zaakceptowane: historia dopiero po minionym terminie spotkania (jeśli schronisko go ustawiło).
       const event = parseVisitDate(visit.date?.trim() ?? '');
       if (!event) {
         return mode === 'upcoming';

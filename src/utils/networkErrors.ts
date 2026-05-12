@@ -1,4 +1,3 @@
-/** Tekst dla użytkownika przy typowych błędach sieci (fetch / RN). */
 export const OFFLINE_MESSAGE =
   'Brak połączenia z internetem lub serwer nie odpowiada. Sprawdź sieć i spróbuj ponownie.';
 

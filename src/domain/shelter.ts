@@ -11,7 +11,6 @@ export type UpdateApplicationStatusResult =
   | { ok: false; reason: 'not_found' }
   | { ok: false; reason: 'error'; message?: string };
 
-/** Zmiana samego pola `date` (adopcja / spacer) — ten sam kształt błędów co przy zmianie statusu. */
 export type UpdateApplicationMeetingDateResult = UpdateApplicationStatusResult;
 
 export interface Application {
@@ -25,7 +24,6 @@ export interface Application {
   applicantPhone?: string;
   applicantCity?: string;
   applicantAvatarUrl?: string;
-  /** Uzasadnienie adopcji lub inna treść od wnioskującego. */
   applicantMessage?: string;
   date: string;
   status: AppStatus;
@@ -58,7 +56,6 @@ export interface Animal {
   color?: string;
 }
 
-/** Pola schroniska przy listowaniu wizyt użytkownika (częściowy odczyt zwierzęcia). */
 export interface ShelterAnimalLink {
   id: string;
   city?: string;

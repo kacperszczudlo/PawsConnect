@@ -2,7 +2,6 @@ import { useShallow } from 'zustand/react/shallow';
 import { useShelterAnimalsStore } from './useShelterAnimalsStore';
 import { useShelterApplicationsStore } from './useShelterApplicationsStore';
 
-/** Home: lista, loader, odświeżanie. */
 export const useShelterAnimalsHomeSlice = () =>
   useShelterAnimalsStore(
     useShallow((s) => ({
@@ -12,7 +11,6 @@ export const useShelterAnimalsHomeSlice = () =>
     })),
   );
 
-/** Ulubione / lista na profilu: tylko katalog + fetch. */
 export const useShelterAnimalsCatalogSlice = () =>
   useShelterAnimalsStore(
     useShallow((s) => ({
@@ -21,7 +19,6 @@ export const useShelterAnimalsCatalogSlice = () =>
     })),
   );
 
-/** Panel admina: lista własnych zwierząt + CRUD fetch + loader. */
 export const useShelterAnimalsAdminListSlice = () =>
   useShelterAnimalsStore(
     useShallow((s) => ({
@@ -32,7 +29,6 @@ export const useShelterAnimalsAdminListSlice = () =>
     })),
   );
 
-/** Formularz dodawania / edycji zwierzęcia. */
 export const useShelterAnimalsFormActionsSlice = () =>
   useShelterAnimalsStore(
     useShallow((s) => ({
@@ -42,7 +38,6 @@ export const useShelterAnimalsFormActionsSlice = () =>
     })),
   );
 
-/** Lista wniosków schroniska + akcje. */
 export const useShelterApplicationsAdminSlice = () =>
   useShelterApplicationsStore(
     useShallow((s) => ({
@@ -53,6 +48,5 @@ export const useShelterApplicationsAdminSlice = () =>
     })),
   );
 
-/** Badge zakładki: liczba oczekujących wniosków. */
 export const usePendingShelterApplicationsCount = () =>
   useShelterApplicationsStore((s) => s.applications.filter((a) => a.status === 'Oczekujące').length);

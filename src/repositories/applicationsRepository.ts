@@ -55,7 +55,6 @@ export interface ApplicationsRepository {
     status: AppStatus;
     userId: string;
     emailTrimmed: string;
-    /** Ustawiane przy akceptacji adopcji (termin spotkania). `null` czyści pole. Brak klucza = bez zmiany `date`. */
     meetingDate?: string | null;
   }): Promise<UpdateApplicationStatusResult>;
   updateMeetingDateOwnedByShelter(params: {

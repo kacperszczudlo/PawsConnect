@@ -114,11 +114,9 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   isFavorite: (animalId) => get().favorites.includes(animalId),
 }));
 
-/** Lista ulubionych na profilu: odczyt + odświeżanie. */
 export const useFavoritesCatalogSlice = () =>
   useFavoritesStore(useShallow((s) => ({ favorites: s.favorites, fetchFavorites: s.fetchFavorites })));
 
-/** Ekrany z sercem / lista: stan + toggle + odświeżanie. */
 export const useFavoritesInteractionsSlice = () =>
   useFavoritesStore(
     useShallow((s) => ({

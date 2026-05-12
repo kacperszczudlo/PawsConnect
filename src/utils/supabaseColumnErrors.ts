@@ -1,4 +1,3 @@
-/** PostgREST / Postgres — brak kolumny lub cache schematu nie widzi nowej kolumny. */
 export const isSchemaOrMissingColumnError = (error: unknown): boolean => {
   const e = error as { code?: string; message?: string } | null | undefined;
   if (!e) {

@@ -26,8 +26,6 @@ export const uploadImage = async (
         return null;
       }
 
-      // Hermes/React Native may throw when creating Blob from ArrayBufferView.
-      // Upload an ArrayBuffer directly from the local file URI instead.
       const response = await fetch(asset.uri);
       fileToUpload = await response.arrayBuffer();
     }

@@ -117,8 +117,6 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
           message: friendlyErrorMessage(error, error.message),
         });
       } else if (data.session) {
-        // Bez potwierdzania e-maila Supabase od razu loguje — App.tsx przełącza na główny stack.
-        // Nawigacja do „Login” rzucałaby błąd, bo AuthStack już nie jest zamontowany.
         showToast({
           type: 'success',
           message: 'Konto zostało utworzone. Witamy!',

@@ -38,7 +38,7 @@ export const FavoritesScreen = () => {
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).',
+        message: 'Nie udało się zapisać w ulubionych. Sprawdź połączenie z internetem i spróbuj ponownie.',
       });
     }
   };

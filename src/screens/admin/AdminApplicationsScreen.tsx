@@ -89,7 +89,7 @@ export const AdminApplicationsScreen = () => {
         if (status === 'Zaakceptowane') {
           showToast({ type: 'success', message: 'Wniosek został zaakceptowany.' });
         } else if (status === 'Odrzucone') {
-          showToast({ type: 'info', message: 'Wniosek został anulowany / odrzucony.' });
+          showToast({ type: 'info', message: 'Wniosek został odrzucony.' });
         }
         return true;
       }
@@ -98,7 +98,7 @@ export const AdminApplicationsScreen = () => {
         showToast({
           type: 'error',
           title: 'Termin zajęty',
-          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}. Pies nie może być na dwóch spacerach jednocześnie.`,
+          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}. To samo zwierzę nie może mieć dwóch spacerów w tym samym czasie.`,
           duration: 6000,
         });
         return false;
@@ -134,7 +134,7 @@ export const AdminApplicationsScreen = () => {
         showToast({
           type: 'error',
           title: 'Termin zajęty',
-          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}.`,
+          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}. To samo zwierzę nie może mieć dwóch spacerów w tym samym czasie.`,
           duration: 6000,
         });
         return false;
@@ -414,8 +414,8 @@ export const AdminApplicationsScreen = () => {
             <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b' }}>Zmiana terminu</Text>
             <Text style={{ fontSize: 14, color: '#64748b', marginTop: 8, lineHeight: 20 }}>
               {editDateModalApp?.type === 'Spacer'
-                ? 'Nowy termin zobaczy użytkownik w „Twoich wizytach”. Spacer musi mieć datę i godzinę.'
-                : 'Możesz ustawić lub zmienić termin spotkania. Puste pole daty przy zapisie usuwa termin z aplikacji użytkownika.'}
+                ? 'Użytkownik zobaczy nowy termin w zakładce Wizyty. Spacer musi mieć datę i godzinę.'
+                : 'Możesz ustawić lub zmienić termin spotkania. Puste pole daty przy zapisie usuwa termin widoczny dla użytkownika.'}
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', marginTop: 16 }}>DATA (DD.MM.RRRR)</Text>
             <TextInput
@@ -692,7 +692,7 @@ export const AdminApplicationsScreen = () => {
 
               {app.type === 'Adopcja' && !app.applicantMessage ? (
                 <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 10, fontStyle: 'italic' }}>
-                  Brak treści opisu w rekordzie wniosku (starsze zgłoszenia).
+                  Brak opisu we wniosku (starsze zgłoszenia).
                 </Text>
               ) : null}
             </View>
