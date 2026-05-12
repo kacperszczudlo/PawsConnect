@@ -1,31 +1,49 @@
+import { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 import { UserProfile } from '../types/profile';
 
-const MOCK_PROFILE: UserProfile = {
-  id: 'u1',
-  fullName: 'Kacper Szczudło',
-  email: 'kacper@example.com',
-  phone: '+48 600 700 800',
-  city: 'Kraków',
-  avatarUrl:
-    'https://images.unsplash.com/photo-1521119989659-a83eee488004?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80',
+const mapUserToProfile = (user: User): UserProfile => {
+  const role = user.user_metadata?.role;
+  const fullName =
+    role === 'admin'
+      ? (user.user_metadata?.shelter_name ?? '').toString()
+      : (user.user_metadata?.full_name ?? '').toString();
+
+  return {
+    id: user.id,
+    fullName,
+    email: (user.email ?? '').toString(),
+    phone: (user.user_metadata?.phone ?? '').toString(),
+    city: (user.user_metadata?.city ?? '').toString(),
+    avatarUrl: (user.user_metadata?.avatar_url ?? '').toString(),
+  };
 };
-
-const wait = (delay = 250) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, delay);
-  });
-
-let profileDb = { ...MOCK_PROFILE };
 
 export const profileService = {
   async getProfile(): Promise<UserProfile> {
-    await wait();
-    return { ...profileDb };
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      throw error ?? new Error('Nie udało się pobrać profilu.');
+    }
+
+    return mapUserToProfile(data.user);
   },
 
   async updateProfile(payload: UserProfile): Promise<UserProfile> {
-    await wait();
-    profileDb = { ...payload };
-    return { ...profileDb };
+    const { data, error } = await supabase.auth.updateUser({
+      email: payload.email,
+      data: {
+        full_name: payload.fullName,
+        city: payload.city,
+        phone: payload.phone,
+        avatar_url: payload.avatarUrl,
+      },
+    });
+
+    if (error || !data.user) {
+      throw error ?? new Error('Nie udało się zaktualizować profilu.');
+    }
+
+    return mapUserToProfile(data.user);
   },
 };
