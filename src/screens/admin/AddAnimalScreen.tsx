@@ -7,6 +7,7 @@ import { Animal, useShelterStore } from '../../store/useShelterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { uploadAnimalImage } from '../../services/imageService';
 import { useToast } from '../../context/ToastContext';
+import { canShelterManageAnimal } from '../../utils/shelterAnimalOwnership';
 
 export const AddAnimalScreen = () => {
   const navigation = useNavigation();
@@ -38,6 +39,16 @@ export const AddAnimalScreen = () => {
 
   useEffect(() => {
     if (!editingAnimal) {
+      return;
+    }
+
+    if (!canShelterManageAnimal(editingAnimal, user)) {
+      showToast({
+        type: 'error',
+        title: 'Brak uprawnień',
+        message: 'To ogłoszenie należy do innego schroniska.',
+      });
+      navigation.goBack();
       return;
     }
 

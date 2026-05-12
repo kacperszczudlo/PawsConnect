@@ -154,15 +154,18 @@ export const syncProfileEverywhere = async (draft: ProfileSyncDraft): Promise<Us
     const knownAnimalIds = uniqueNonEmpty(
       useShelterStore
         .getState()
-        .animals.filter((animal) =>
-          matchesOwnedRow({
+        .animals.filter((animal) => {
+          if (animal.shelterUserId && animal.shelterUserId !== draft.user.id) {
+            return false;
+          }
+          return matchesOwnedRow({
             shelterEmail: animal.shelterEmail,
             shelterName: animal.shelterName,
             shelterPhone: animal.shelterPhone,
             shelterAddress: animal.shelterAddress,
             city: animal.city,
-          }),
-        )
+          });
+        })
         .map((animal) => animal.id),
     );
     const knownApplicationIds = uniqueNonEmpty(

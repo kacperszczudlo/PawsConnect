@@ -52,7 +52,9 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
       try {
         const { data } = await supabase
           .from('animals')
-          .select('id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color')
+          .select(
+            'id,name,city,shelter_user_id,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color',
+          )
           .eq('id', animal.id)
           .maybeSingle();
 
@@ -61,6 +63,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             id: String(data.id),
             name: data.name ?? animal.name,
             city: data.city ?? animal.city,
+            shelterUserId: data.shelter_user_id != null ? String(data.shelter_user_id) : animal.shelterUserId,
             shelterName: data.shelter_name ?? animal.shelterName,
             shelterAddress: data.shelter_address ?? animal.shelterAddress,
             shelterPhone: data.shelter_phone ?? animal.shelterPhone,

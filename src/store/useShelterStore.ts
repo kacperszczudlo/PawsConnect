@@ -21,6 +21,8 @@ export interface Animal {
   id: string;
   name: string;
   city?: string;
+  /** Konto schroniska (Supabase auth.users.id), które utworzyło ogłoszenie */
+  shelterUserId?: string;
   shelterName?: string;
   shelterAddress?: string;
   shelterPhone?: string;
@@ -41,6 +43,12 @@ const normalizeAnimal = (row: any): Animal => ({
   id: String(row.id),
   name: row.name ?? '',
   city: row.city ?? row.shelter_city ?? undefined,
+  shelterUserId:
+    row.shelterUserId != null
+      ? String(row.shelterUserId)
+      : row.shelter_user_id != null
+        ? String(row.shelter_user_id)
+        : undefined,
   shelterName: row.shelterName ?? row.shelter_name ?? undefined,
   shelterAddress: row.shelterAddress ?? row.shelter_address ?? undefined,
   shelterPhone: row.shelterPhone ?? row.shelter_phone ?? undefined,
@@ -75,7 +83,7 @@ const serializeAnimal = (animal: Omit<Animal, 'id'>) => ({
 });
 
 const ANIMALS_LIST_SELECT =
-  'id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color';
+  'id,name,city,shelter_user_id,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color';
 
 const formatError = (error: unknown) => {
   if (error instanceof Error) {
@@ -104,7 +112,7 @@ interface ShelterState {
   updateApplicationStatus: (id: string, status: AppStatus) => Promise<void>;
 }
 
-export const useShelterStore = create<ShelterState>((set, get) => ({
+export const useShelterStore = create<ShelterState>((set) => ({
   animals: [],
   isLoading: false,
   applications: [],
@@ -125,7 +133,9 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
       if (primary.error?.code === '42703') {
         const fallback = await supabase
           .from('animals')
-          .select('id,name,city,type,breed,age,description,image,sex,weight,color')
+          .select(
+            'id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color',
+          )
           .order('created_at', { ascending: false });
 
         if (!fallback.error && fallback.data) {
@@ -156,51 +166,116 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
   },
 
   addAnimal: async (animalData) => {
-    const { data, error } = await supabase.from('animals').insert([serializeAnimal(animalData)]).select();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) {
+      console.error('Błąd dodawania zwierzaka: brak zalogowanego użytkownika.');
+      return false;
+    }
+
+    const { data, error } = await supabase
+      .from('animals')
+      .insert([{ ...serializeAnimal(animalData), shelter_user_id: user.id }])
+      .select(ANIMALS_LIST_SELECT);
+
     if (!error && data && data.length > 0) {
       set((state) => ({ animals: [normalizeAnimal(data[0]), ...state.animals] }));
       return true;
     } else {
-      console.error("Błąd dodawania zwierzaka:", error);
+      console.error('Błąd dodawania zwierzaka:', error);
       return false;
     }
   },
 
   updateAnimal: async (id, animalData) => {
-    const { data, error } = await supabase
-      .from('animals')
-      .update(serializeAnimal(animalData))
-      .eq('id', id)
-      .select('id');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!error && (data?.length ?? 0) > 0) {
-      set((state) => ({
-        animals: state.animals.map((animal) =>
-          animal.id === id ? normalizeAnimal({ ...animal, ...animalData, id }) : animal,
-        ),
-      }));
-      return true;
-    } else {
-      if (!error) {
-        console.warn(
-          `Aktualizacja zwierzaka nie zmieniła żadnego rekordu (id=${id}). Sprawdź polityki RLS lub czy rekord nadal istnieje.`,
-        );
-      } else {
-        console.error('Błąd aktualizacji zwierzaka:', error?.message ?? error);
-      }
+    if (!user?.id) {
+      console.error('Błąd aktualizacji zwierzaka: brak zalogowanego użytkownika.');
       return false;
     }
+
+    const payload = serializeAnimal(animalData);
+
+    const owned = await supabase
+      .from('animals')
+      .update(payload)
+      .eq('id', id)
+      .eq('shelter_user_id', user.id)
+      .select(ANIMALS_LIST_SELECT);
+
+    let row = owned.data?.[0];
+    let error = owned.error;
+
+    if (!error && !row && user.email) {
+      const legacy = await supabase
+        .from('animals')
+        .update({ ...payload, shelter_user_id: user.id })
+        .eq('id', id)
+        .is('shelter_user_id', null)
+        .eq('shelter_email', user.email)
+        .select(ANIMALS_LIST_SELECT);
+
+      row = legacy.data?.[0];
+      error = legacy.error;
+    }
+
+    if (!error && row) {
+      set((state) => ({
+        animals: state.animals.map((animal) => (animal.id === id ? normalizeAnimal(row) : animal)),
+      }));
+      return true;
+    }
+
+    if (!error && !row) {
+      console.warn(
+        `Aktualizacja zwierzaka nie zmieniła żadnego rekordu (id=${id}). Brak uprawnień lub rekord nie istnieje.`,
+      );
+    } else if (error) {
+      console.error('Błąd aktualizacji zwierzaka:', error?.message ?? error);
+    }
+    return false;
   },
 
   // USUWANIE Z BAZY
   removeAnimal: async (id) => {
-    const { error } = await supabase.from('animals').delete().eq('id', id);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!error) {
+    if (!user?.id) {
+      console.error('Błąd usuwania zwierzaka: brak zalogowanego użytkownika.');
+      return;
+    }
+
+    const primary = await supabase.from('animals').delete().eq('id', id).eq('shelter_user_id', user.id).select('id');
+
+    let deleted = (primary.data?.length ?? 0) > 0;
+    let error = primary.error;
+
+    if (!error && !deleted && user.email) {
+      const legacy = await supabase
+        .from('animals')
+        .delete()
+        .eq('id', id)
+        .is('shelter_user_id', null)
+        .eq('shelter_email', user.email)
+        .select('id');
+
+      deleted = (legacy.data?.length ?? 0) > 0;
+      error = legacy.error;
+    }
+
+    if (!error && deleted) {
       set((state) => ({ animals: state.animals.filter((a) => a.id !== id) }));
-    } else {
+    } else if (error) {
       console.error('Błąd usuwania zwierzaka:', error);
+    } else {
+      console.warn(`Usunięcie zwierzaka nie zmieniło żadnego rekordu (id=${id}). Brak uprawnień.`);
     }
   },
 
