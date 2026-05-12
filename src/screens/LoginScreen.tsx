@@ -7,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   ActivityIndicator
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -66,79 +67,87 @@ export const LoginScreen = ({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       style={styles.container}
     >
-      <View style={styles.header}>
-        <View style={styles.logoCircle}>
-          <PawPrint color="#f97316" size={38} />
-        </View>
-        <Text style={styles.brandName}>PawsConnect</Text>
-        <Text style={styles.subtitle}>Wolontariat i adopcje</Text>
-      </View>
-
-      <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Zaloguj się</Text>
-
-        <View style={styles.inputLabel}>
-          <Text style={styles.labelText}>ADRES E-MAIL</Text>
-        </View>
-        <View style={styles.inputContainer}>
-          <Mail color="#94a3b8" size={20} />
-          <TextInput
-            style={styles.input}
-            placeholder="jan@kowalski.pl"
-            placeholderTextColor="#94a3b8"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <PawPrint color="#f97316" size={38} />
+          </View>
+          <Text style={styles.brandName}>PawsConnect</Text>
+          <Text style={styles.subtitle}>Wolontariat i adopcje</Text>
         </View>
 
-        <View style={styles.inputLabel}>
-          <Text style={styles.labelText}>HASŁO</Text>
-        </View>
-        <View style={styles.inputContainer}>
-          <Lock color="#94a3b8" size={20} />
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="#94a3b8"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            {showPassword ? (
-              <EyeOff color="#94a3b8" size={20} />
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Zaloguj się</Text>
+
+          <View style={styles.inputLabel}>
+            <Text style={styles.labelText}>ADRES E-MAIL</Text>
+          </View>
+          <View style={styles.inputContainer}>
+            <Mail color="#94a3b8" size={20} />
+            <TextInput
+              style={styles.input}
+              placeholder="jan@kowalski.pl"
+              placeholderTextColor="#94a3b8"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputLabel}>
+            <Text style={styles.labelText}>HASŁO</Text>
+          </View>
+          <View style={styles.inputContainer}>
+            <Lock color="#94a3b8" size={20} />
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor="#94a3b8"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              {showPassword ? (
+                <EyeOff color="#94a3b8" size={20} />
+              ) : (
+                <Eye color="#94a3b8" size={20} />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
             ) : (
-              <Eye color="#94a3b8" size={20} />
+              <Text style={styles.loginButtonText}>Zaloguj się</Text>
             )}
           </TouchableOpacity>
-        </View>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.loginButtonText}>Zaloguj się</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Nie masz konta? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.linkText}>Zarejestruj się</Text>
-          </TouchableOpacity>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Nie masz konta? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.linkText}>Zarejestruj się</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
+  scrollContent: { flexGrow: 1, paddingBottom: 24 },
   header: {
     alignItems: 'center',
     paddingTop: 64,
@@ -158,7 +167,6 @@ const styles = StyleSheet.create({
   brandName: { fontSize: 30, fontWeight: '800', color: '#fff', marginTop: 12 },
   subtitle: { color: '#ffedd5', marginTop: 4, fontWeight: '600', fontSize: 12 },
   formCard: {
-    flex: 1,
     backgroundColor: '#fff',
     marginTop: 18,
     marginHorizontal: 16,

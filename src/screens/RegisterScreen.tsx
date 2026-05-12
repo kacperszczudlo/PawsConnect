@@ -155,7 +155,8 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       style={styles.container}
     >
       <ScrollView 
@@ -354,7 +355,6 @@ const styles = StyleSheet.create({
   brandName: { fontSize: 30, fontWeight: '800', color: '#fff', marginTop: 12 },
   subtitle: { color: '#ffedd5', fontSize: 12, marginTop: 4, fontWeight: '600' },
   formCard: {
-    flex: 1,
     backgroundColor: '#fff',
     marginTop: 18,
     marginHorizontal: 16,
