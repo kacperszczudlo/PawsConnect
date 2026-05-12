@@ -6,6 +6,7 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -105,6 +106,60 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
     }
   };
 
+  const buildShareMessage = () => {
+    const shareAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
+    const typeLabel = currentAnimal.type ?? 'Zwierzak do adopcji';
+    const breedLabel = currentAnimal.breed ?? 'Brak danych';
+    const sexLabel = currentAnimal.sex ?? currentAnimal.gender ?? 'Nieznana płeć';
+    const weightLabel = currentAnimal.weight ?? 'Brak danych';
+    const descriptionSnippet = (currentAnimal.description ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 220);
+
+    const introLine = descriptionSnippet
+      ? `${currentAnimal.name} czeka na dom. ${descriptionSnippet}${descriptionSnippet.length >= 220 ? '...' : ''}`
+      : `${currentAnimal.name} czeka na kochajacy dom i odpowiedzialnego opiekuna.`;
+
+    const lines = [
+      `OGLOSZENIE ADOPCYJNE - ${currentAnimal.name}`,
+      introLine,
+      '',
+      'Najwazniejsze informacje:',
+      `Typ: ${typeLabel}`,
+      `Rasa: ${breedLabel}`,
+      `Plec: ${sexLabel}`,
+      `Wiek: ${shareAge}`,
+      `Waga: ${weightLabel}`,
+      `Lokalizacja: ${locationText}`,
+      '',
+      'Kontakt w sprawie adopcji:',
+      currentAnimal.shelterPhone ? `Telefon: ${currentAnimal.shelterPhone}` : 'Telefon: Brak danych',
+      currentAnimal.shelterEmail ? `E-mail: ${currentAnimal.shelterEmail}` : 'E-mail: Brak danych',
+      '',
+      'Jesli chcesz poznac zwierzaka i dac mu dom, skontaktuj sie ze schroniskiem.',
+      '',
+      'Udostepnione z aplikacji PawsConnect.',
+    ].filter(Boolean);
+
+    return lines.join('\n');
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: buildShareMessage(),
+        title: `Udostępnij ogłoszenie: ${currentAnimal.name}`,
+      });
+    } catch {
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się udostępnić ogłoszenia. Spróbuj ponownie.',
+      });
+    }
+  };
+
   const formattedAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
 
   const locationText = currentAnimal.shelterName && currentAnimal.shelterAddress
@@ -139,7 +194,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <ChevronLeft size={24} color="#1e293b" />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={styles.iconBtn}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => void handleShare()}>
               <Share2 size={20} color="#1e293b" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={() => void handleToggleFavorite()}>
