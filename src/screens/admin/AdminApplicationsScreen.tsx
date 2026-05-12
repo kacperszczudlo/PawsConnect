@@ -55,14 +55,32 @@ const mergeDateTime = (date: string, time: string) => {
   return `${d} ${t}`;
 };
 
+const parseStoredDateTime = (raw: string | undefined): { date: string; time: string } => {
+  const t = (raw ?? '').trim();
+  if (!t) {
+    return { date: '', time: '' };
+  }
+  const parts = t.split(/\s+/);
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(parts[0])) {
+    const timePart = parts[1] && /^\d{2}:\d{2}$/.test(parts[1]) ? parts[1] : '';
+    return { date: parts[0], time: timePart };
+  }
+  return { date: '', time: '' };
+};
+
 export const AdminApplicationsScreen = () => {
   const user = useAuthStore((state) => state.user);
-  const { applications, fetchApplications, updateApplicationStatus } = useShelterApplicationsAdminSlice();
+  const { applications, fetchApplications, updateApplicationStatus, updateApplicationMeetingDate } =
+    useShelterApplicationsAdminSlice();
   const { showToast } = useToast();
 
   const [adoptionModalApp, setAdoptionModalApp] = useState<Application | null>(null);
   const [adoptionDate, setAdoptionDate] = useState('');
   const [adoptionTime, setAdoptionTime] = useState('');
+
+  const [editDateModalApp, setEditDateModalApp] = useState<Application | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
 
   const runUpdateStatus = useCallback(
     async (applicationId: string, status: AppStatus, options?: { meetingDate?: string | null }) => {
@@ -105,6 +123,110 @@ export const AdminApplicationsScreen = () => {
     [showToast, updateApplicationStatus],
   );
 
+  const runMeetingDateUpdate = useCallback(
+    async (applicationId: string, date: string | null) => {
+      const result = await updateApplicationMeetingDate(applicationId, date);
+      if (result.ok) {
+        showToast({ type: 'success', message: 'Termin został zaktualizowany.' });
+        return true;
+      }
+      if (result.reason === 'conflict') {
+        showToast({
+          type: 'error',
+          title: 'Termin zajęty',
+          message: `Inny zaakceptowany spacer (${result.conflict.applicantName}) jest już zaplanowany na ${result.conflict.date}.`,
+          duration: 6000,
+        });
+        return false;
+      }
+      if (result.reason === 'unauthorized' || result.reason === 'not_found') {
+        showToast({
+          type: 'error',
+          title: 'Brak uprawnień',
+          message: 'Nie masz uprawnień do zmiany tego wniosku.',
+        });
+        return false;
+      }
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: result.message ?? 'Nie udało się zapisać terminu.',
+      });
+      return false;
+    },
+    [showToast, updateApplicationMeetingDate],
+  );
+
+  const openEditDateModal = (app: Application) => {
+    const { date, time } = parseStoredDateTime(app.date);
+    setEditDate(date);
+    setEditTime(time);
+    setEditDateModalApp(app);
+  };
+
+  const closeEditDateModal = () => {
+    setEditDateModalApp(null);
+  };
+
+  const handleSaveEditedDate = async () => {
+    if (!editDateModalApp) {
+      return;
+    }
+    const isSpacer = editDateModalApp.type === 'Spacer';
+    const combined = mergeDateTime(editDate, editTime);
+
+    if (isSpacer) {
+      if (!editDate.trim() || !editTime.trim()) {
+        showToast({ type: 'info', title: 'Termin', message: 'Spacer wymaga daty i godziny.' });
+        return;
+      }
+      if (!/^\d{2}\.\d{2}\.\d{4}$/.test(editDate.trim())) {
+        showToast({ type: 'info', title: 'Data', message: 'Użyj formatu DD.MM.RRRR.' });
+        return;
+      }
+      if (!/^\d{2}:\d{2}$/.test(editTime.trim())) {
+        showToast({ type: 'info', title: 'Godzina', message: 'Użyj formatu GG:MM.' });
+        return;
+      }
+      if (!combined) {
+        showToast({ type: 'info', title: 'Data', message: 'Sprawdź datę i godzinę.' });
+        return;
+      }
+    } else {
+      if (!editDate.trim()) {
+        const ok = await runMeetingDateUpdate(editDateModalApp.id, null);
+        if (ok) {
+          closeEditDateModal();
+        }
+        return;
+      }
+      if (!/^\d{2}\.\d{2}\.\d{4}$/.test(editDate.trim())) {
+        showToast({ type: 'info', title: 'Data', message: 'Użyj formatu DD.MM.RRRR.' });
+        return;
+      }
+      if (editTime.trim() && !/^\d{2}:\d{2}$/.test(editTime.trim())) {
+        showToast({ type: 'info', title: 'Godzina', message: 'Użyj formatu GG:MM.' });
+        return;
+      }
+    }
+
+    const payload = isSpacer ? combined! : mergeDateTime(editDate, editTime);
+    const ok = await runMeetingDateUpdate(editDateModalApp.id, payload);
+    if (ok) {
+      closeEditDateModal();
+    }
+  };
+
+  const handleClearAdoptionDateOnly = async () => {
+    if (!editDateModalApp || editDateModalApp.type !== 'Adopcja') {
+      return;
+    }
+    const ok = await runMeetingDateUpdate(editDateModalApp.id, null);
+    if (ok) {
+      closeEditDateModal();
+    }
+  };
+
   const myApplications = useMemo(
     () => applications.filter((app) => canShelterManageApplication(app, user)),
     [applications, user],
@@ -143,17 +265,7 @@ export const AdminApplicationsScreen = () => {
     setAdoptionModalApp(null);
   };
 
-  const handleAdoptionAcceptWithoutDate = async () => {
-    if (!adoptionModalApp) {
-      return;
-    }
-    const ok = await runUpdateStatus(adoptionModalApp.id, 'Zaakceptowane', { meetingDate: null });
-    if (ok) {
-      closeAdoptionModal();
-    }
-  };
-
-  const handleAdoptionAcceptWithDate = async () => {
+  const handleAdoptionAcceptSubmit = async () => {
     if (!adoptionModalApp) {
       return;
     }
@@ -226,8 +338,7 @@ export const AdminApplicationsScreen = () => {
           <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b' }}>Akceptacja adopcji</Text>
             <Text style={{ fontSize: 14, color: '#64748b', marginTop: 8, lineHeight: 20 }}>
-              Możesz od razu wpisać termin spotkania — pojawi się u użytkownika w aplikacji. Bez terminu: ustalicie go
-              telefonicznie.
+              Ustal termin spotkania — użytkownik zobaczy go w aplikacji. Akceptacja wymaga podania daty.
             </Text>
             <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', marginTop: 16 }}>DATA (DD.MM.RRRR)</Text>
             <TextInput
@@ -273,37 +384,118 @@ export const AdminApplicationsScreen = () => {
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '700', color: '#475569' }}>Zamknij</Text>
+                <Text style={{ fontWeight: '700', color: '#475569' }}>Anuluj</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  void handleAdoptionAcceptWithoutDate();
+                  void handleAdoptionAcceptSubmit();
                 }}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
                   borderRadius: 12,
-                  backgroundColor: '#f1f5f9',
+                  backgroundColor: '#10b981',
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ fontWeight: '700', color: '#334155' }}>Akceptuj bez terminu</Text>
+                <Text style={{ fontWeight: '800', color: '#fff' }}>Akceptuj</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                void handleAdoptionAcceptWithDate();
-              }}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={editDateModalApp != null} transparent animationType="fade" onRequestClose={closeEditDateModal}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', padding: 24 }}
+        >
+          <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b' }}>Zmiana terminu</Text>
+            <Text style={{ fontSize: 14, color: '#64748b', marginTop: 8, lineHeight: 20 }}>
+              {editDateModalApp?.type === 'Spacer'
+                ? 'Nowy termin zobaczy użytkownik w „Twoich wizytach”. Spacer musi mieć datę i godzinę.'
+                : 'Możesz ustawić lub zmienić termin spotkania. Puste pole daty przy zapisie usuwa termin z aplikacji użytkownika.'}
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', marginTop: 16 }}>DATA (DD.MM.RRRR)</Text>
+            <TextInput
+              value={editDate}
+              onChangeText={(v) => handleDateDigits(v, setEditDate)}
+              placeholder="DD.MM.RRRR"
+              keyboardType="numeric"
               style={{
-                marginTop: 10,
-                paddingVertical: 14,
+                marginTop: 6,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
                 borderRadius: 12,
-                backgroundColor: '#10b981',
-                alignItems: 'center',
+                paddingHorizontal: 14,
+                height: 48,
+                fontSize: 16,
               }}
-            >
-              <Text style={{ fontWeight: '800', color: '#fff' }}>Akceptuj z terminem</Text>
-            </TouchableOpacity>
+            />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', marginTop: 12 }}>GODZINA</Text>
+            <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Opcjonalnie przy adopcji; przy spacerze wymagane.</Text>
+            <TextInput
+              value={editTime}
+              onChangeText={(v) => handleTimeDigits(v, setEditTime)}
+              placeholder="GG:MM"
+              keyboardType="numeric"
+              style={{
+                marginTop: 6,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                height: 48,
+                fontSize: 16,
+              }}
+            />
+            {editDateModalApp?.type === 'Adopcja' ? (
+              <TouchableOpacity
+                onPress={() => {
+                  void handleClearAdoptionDateOnly();
+                }}
+                style={{
+                  marginTop: 14,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: '#64748b' }}>Usuń termin</Text>
+              </TouchableOpacity>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+              <TouchableOpacity
+                onPress={closeEditDateModal}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: '#475569' }}>Anuluj</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  void handleSaveEditedDate();
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: '#0f172a',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontWeight: '800', color: '#fff' }}>Zapisz</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -504,6 +696,29 @@ export const AdminApplicationsScreen = () => {
                 </Text>
               ) : null}
             </View>
+
+            {app.status !== 'Odrzucone' && (
+              <TouchableOpacity
+                onPress={() => openEditDateModal(app)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: 4,
+                  marginBottom: 4,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  gap: 8,
+                }}
+              >
+                <Calendar size={16} color="#475569" />
+                <Text style={{ color: '#334155', fontWeight: '700', fontSize: 13 }}>Zmień termin</Text>
+              </TouchableOpacity>
+            )}
 
             {app.status === 'Oczekujące' && (
               <View

@@ -11,6 +11,9 @@ export type UpdateApplicationStatusResult =
   | { ok: false; reason: 'not_found' }
   | { ok: false; reason: 'error'; message?: string };
 
+/** Zmiana samego pola `date` (adopcja / spacer) — ten sam kształt błędów co przy zmianie statusu. */
+export type UpdateApplicationMeetingDateResult = UpdateApplicationStatusResult;
+
 export interface Application {
   id: string;
   type: 'Adopcja' | 'Spacer';

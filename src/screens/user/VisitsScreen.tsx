@@ -272,10 +272,6 @@ export const VisitsScreen = () => {
                         <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20 }}>
                           Kontakt ze schroniskiem w ciągu 3 dni roboczych.
                         </Text>
-                      ) : visit.type === 'Adopcja' && visit.status === 'Zaakceptowane' && !visit.date?.trim() ? (
-                        <Text style={{ color: '#64748b', fontSize: 13, lineHeight: 20 }}>
-                          Zaakceptowano. Termin spotkania — ustal ze schroniskiem (kontakt poniżej).
-                        </Text>
                       ) : (
                         <>
                           <Clock size={14} color="#64748b" style={{ marginTop: 2 }} />

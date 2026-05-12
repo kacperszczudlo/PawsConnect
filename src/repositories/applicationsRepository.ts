@@ -58,6 +58,12 @@ export interface ApplicationsRepository {
     /** Ustawiane przy akceptacji adopcji (termin spotkania). `null` czyści pole. Brak klucza = bez zmiany `date`. */
     meetingDate?: string | null;
   }): Promise<UpdateApplicationStatusResult>;
+  updateMeetingDateOwnedByShelter(params: {
+    applicationId: string;
+    date: string | null;
+    userId: string;
+    emailTrimmed: string;
+  }): Promise<UpdateApplicationStatusResult>;
 }
 
 const stripApplicantOptionalInsertFields = (row: Record<string, unknown>) => {
@@ -65,6 +71,79 @@ const stripApplicantOptionalInsertFields = (row: Record<string, unknown>) => {
     delete row[k];
   }
 };
+
+async function shelterOwnedApplicationPatch(
+  client: SupabaseClient,
+  params: {
+    applicationId: string;
+    userId: string;
+    emailTrimmed: string;
+    patch: Record<string, unknown>;
+  },
+): Promise<UpdateApplicationStatusResult> {
+  const { applicationId, userId, emailTrimmed, patch } = params;
+
+  const owned = await client
+    .from('applications')
+    .update(patch)
+    .eq('id', applicationId)
+    .eq('shelter_user_id', userId)
+    .select('id');
+
+  let updated = (owned.data?.length ?? 0) > 0;
+  let error = owned.error;
+
+  if (error?.code === '42703') {
+    error = null;
+    updated = false;
+    if (!emailTrimmed) {
+      return { ok: false, reason: 'unauthorized' };
+    }
+
+    const fallback = await client
+      .from('applications')
+      .update(patch)
+      .eq('id', applicationId)
+      .eq('shelter_email', emailTrimmed)
+      .select('id');
+
+    updated = (fallback.data?.length ?? 0) > 0;
+    error = fallback.error;
+  } else if (!error && !updated && emailTrimmed) {
+    const legacy = await client
+      .from('applications')
+      .update({ ...patch, shelter_user_id: userId })
+      .eq('id', applicationId)
+      .is('shelter_user_id', null)
+      .eq('shelter_email', emailTrimmed)
+      .select('id');
+
+    if (legacy.error?.code === '42703') {
+      const fallbackLegacy = await client
+        .from('applications')
+        .update(patch)
+        .eq('id', applicationId)
+        .eq('shelter_email', emailTrimmed)
+        .select('id');
+
+      updated = (fallbackLegacy.data?.length ?? 0) > 0;
+      error = fallbackLegacy.error;
+    } else {
+      updated = (legacy.data?.length ?? 0) > 0;
+      error = legacy.error;
+    }
+  }
+
+  if (error) {
+    return { ok: false, reason: 'error', message: error.message };
+  }
+
+  if (!updated) {
+    return { ok: false, reason: 'not_found' };
+  }
+
+  return { ok: true };
+}
 
 export const createApplicationsRepository = (client: SupabaseClient): ApplicationsRepository => ({
   async listForShelterAccount({ userId, emailTrimmed }) {
@@ -225,65 +304,20 @@ export const createApplicationsRepository = (client: SupabaseClient): Applicatio
       patch.date = meetingDate;
     }
 
-    const owned = await client
-      .from('applications')
-      .update(patch)
-      .eq('id', applicationId)
-      .eq('shelter_user_id', userId)
-      .select('id');
+    return shelterOwnedApplicationPatch(client, {
+      applicationId,
+      userId,
+      emailTrimmed,
+      patch,
+    });
+  },
 
-    let updated = (owned.data?.length ?? 0) > 0;
-    let error = owned.error;
-
-    if (error?.code === '42703') {
-      error = null;
-      updated = false;
-      if (!emailTrimmed) {
-        return { ok: false, reason: 'unauthorized' };
-      }
-
-      const fallback = await client
-        .from('applications')
-        .update(patch)
-        .eq('id', applicationId)
-        .eq('shelter_email', emailTrimmed)
-        .select('id');
-
-      updated = (fallback.data?.length ?? 0) > 0;
-      error = fallback.error;
-    } else if (!error && !updated && emailTrimmed) {
-      const legacy = await client
-        .from('applications')
-        .update({ ...patch, shelter_user_id: userId })
-        .eq('id', applicationId)
-        .is('shelter_user_id', null)
-        .eq('shelter_email', emailTrimmed)
-        .select('id');
-
-      if (legacy.error?.code === '42703') {
-        const fallbackLegacy = await client
-          .from('applications')
-          .update(patch)
-          .eq('id', applicationId)
-          .eq('shelter_email', emailTrimmed)
-          .select('id');
-
-        updated = (fallbackLegacy.data?.length ?? 0) > 0;
-        error = fallbackLegacy.error;
-      } else {
-        updated = (legacy.data?.length ?? 0) > 0;
-        error = legacy.error;
-      }
-    }
-
-    if (error) {
-      return { ok: false, reason: 'error', message: error.message };
-    }
-
-    if (!updated) {
-      return { ok: false, reason: 'not_found' };
-    }
-
-    return { ok: true };
+  async updateMeetingDateOwnedByShelter({ applicationId, date, userId, emailTrimmed }) {
+    return shelterOwnedApplicationPatch(client, {
+      applicationId,
+      userId,
+      emailTrimmed,
+      patch: { date },
+    });
   },
 });

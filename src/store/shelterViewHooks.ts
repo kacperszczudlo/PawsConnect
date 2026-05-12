@@ -49,6 +49,7 @@ export const useShelterApplicationsAdminSlice = () =>
       applications: s.applications,
       fetchApplications: s.fetchApplications,
       updateApplicationStatus: s.updateApplicationStatus,
+      updateApplicationMeetingDate: s.updateApplicationMeetingDate,
     })),
   );
 

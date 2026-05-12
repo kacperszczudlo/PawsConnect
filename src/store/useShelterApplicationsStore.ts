@@ -11,6 +11,7 @@ export interface ShelterApplicationsState {
     status: AppStatus,
     options?: { meetingDate?: string | null },
   ) => Promise<UpdateApplicationStatusResult>;
+  updateApplicationMeetingDate: (id: string, date: string | null) => Promise<UpdateApplicationStatusResult>;
 }
 
 export const useShelterApplicationsStore = create<ShelterApplicationsState>((set, get) => ({
@@ -106,6 +107,77 @@ export const useShelterApplicationsStore = create<ShelterApplicationsState>((set
       console.warn(
         'Brak kolumny shelter_user_id i brak e-maila konta — uruchom migrację SQL lub ustaw e-mail schroniska.',
       );
+    }
+
+    return result;
+  },
+
+  updateApplicationMeetingDate: async (id, date) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) {
+      console.error('Błąd aktualizacji terminu: brak zalogowanego użytkownika.');
+      return { ok: false, reason: 'unauthorized' };
+    }
+
+    const emailTrimmed = user.email?.trim() ?? '';
+    const target = get().applications.find((app) => app.id === id);
+    const payloadDate = date === null || date === '' ? null : date.trim();
+
+    if (target?.type === 'Spacer' && !payloadDate) {
+      return { ok: false, reason: 'error', message: 'Spacer wymaga ustawionej daty i godziny.' };
+    }
+
+    if (target?.type === 'Spacer' && target.animalId && payloadDate) {
+      const conflictResult = await applicationsRepository.getAcceptedWalkConflict({
+        animalId: target.animalId,
+        date: payloadDate,
+        excludeApplicationId: id,
+      });
+
+      if (!conflictResult.ok && conflictResult.reason === 'error') {
+        console.error('Błąd sprawdzania kolizji spaceru:', conflictResult.message);
+        return { ok: false, reason: 'error', message: conflictResult.message };
+      }
+
+      if (!conflictResult.ok && conflictResult.reason === 'conflict') {
+        return {
+          ok: false,
+          reason: 'conflict',
+          conflict: {
+            applicantName: conflictResult.conflict.applicantName,
+            date: conflictResult.conflict.date,
+            animalName: conflictResult.conflict.animalName ?? target.animalName,
+          },
+        };
+      }
+    }
+
+    const result = await applicationsRepository.updateMeetingDateOwnedByShelter({
+      applicationId: id,
+      date: payloadDate,
+      userId: user.id,
+      emailTrimmed,
+    });
+
+    if (result.ok) {
+      set((state) => ({
+        applications: state.applications.map((app) =>
+          app.id === id
+            ? {
+                ...app,
+                date: payloadDate === null ? '' : payloadDate,
+                shelterUserId: app.shelterUserId ?? user.id,
+              }
+            : app,
+        ),
+      }));
+    } else if (result.reason === 'not_found') {
+      console.warn(`Zmiana terminu nie zmieniła rekordu (id=${id}).`);
+    } else if (result.reason === 'error') {
+      console.error('Błąd zmiany terminu:', result.message);
     }
 
     return result;
