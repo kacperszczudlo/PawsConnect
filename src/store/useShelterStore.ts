@@ -125,6 +125,9 @@ const formatError = (error: unknown) => {
   }
 };
 
+const isMissingShelterUserIdColumnError = (error: { code?: string } | null | undefined) =>
+  error?.code === '42703' || error?.code === 'PGRST204';
+
 let animalsFetchInFlight: Promise<void> | null = null;
 
 interface ShelterState {
@@ -158,7 +161,7 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
         .select(ANIMALS_LIST_SELECT)
         .order('created_at', { ascending: false });
 
-      if (primary.error?.code === '42703') {
+      if (isMissingShelterUserIdColumnError(primary.error)) {
         const fallback = await supabase
           .from('animals')
           .select(
@@ -203,13 +206,28 @@ export const useShelterStore = create<ShelterState>((set, get) => ({
       return false;
     }
 
-    const { data, error } = await supabase
+    const ownedInsert = await supabase
       .from('animals')
       .insert([{ ...serializeAnimal(animalData), shelter_user_id: user.id }])
       .select(ANIMALS_LIST_SELECT);
 
-    if (!error && data && data.length > 0) {
-      set((state) => ({ animals: [normalizeAnimal(data[0]), ...state.animals] }));
+    let row = ownedInsert.data?.[0];
+    let error = ownedInsert.error;
+
+    if (isMissingShelterUserIdColumnError(error)) {
+      const fallbackInsert = await supabase
+        .from('animals')
+        .insert([serializeAnimal(animalData)])
+        .select(
+          'id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color',
+        );
+
+      row = fallbackInsert.data?.[0];
+      error = fallbackInsert.error;
+    }
+
+    if (!error && row) {
+      set((state) => ({ animals: [normalizeAnimal(row), ...state.animals] }));
       return true;
     } else {
       console.error('Błąd dodawania zwierzaka:', error);
