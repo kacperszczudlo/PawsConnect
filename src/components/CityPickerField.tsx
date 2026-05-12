@@ -21,11 +21,12 @@ import {
   searchPolishPlaces,
   type CitySearchResult,
 } from '../services/cityGeocodeService';
+import type { CityRefCoords } from '../store/useFilterStore';
 import { friendlyErrorMessage } from '../utils/networkErrors';
 
 interface CityPickerFieldProps {
   value: string;
-  onChange: (city: string) => void;
+  onChange: (city: string, ref?: CityRefCoords | null) => void;
   label?: string;
 }
 
@@ -46,8 +47,8 @@ export const CityPickerField = ({ value, onChange, label = 'MIASTO' }: CityPicke
   }, []);
 
   const handleSelectCity = useCallback(
-    (city: string) => {
-      onChange(city);
+    (city: string, ref?: CityRefCoords | null) => {
+      onChange(city, ref);
       setVisible(false);
       resetModalSearch();
     },
@@ -119,7 +120,10 @@ export const CityPickerField = ({ value, onChange, label = 'MIASTO' }: CityPicke
 
       const name = await reverseGeocodeLocality(pos.coords.latitude, pos.coords.longitude);
       if (name) {
-        handleSelectCity(name);
+        handleSelectCity(name, {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
       } else {
         setError('Nie znaleziono miejscowości dla tej lokalizacji.');
       }
@@ -132,7 +136,12 @@ export const CityPickerField = ({ value, onChange, label = 'MIASTO' }: CityPicke
 
   const renderItem = ({ item }: { item: CitySearchResult }) => (
     <TouchableOpacity
-      onPress={() => handleSelectCity(item.name)}
+      onPress={() =>
+        handleSelectCity(
+          item.name,
+          item.lat != null && item.lon != null ? { lat: item.lat, lon: item.lon } : undefined,
+        )
+      }
       style={[styles.cityItem, value === item.name && styles.cityItemActive]}
       activeOpacity={0.6}
     >
@@ -179,7 +188,7 @@ export const CityPickerField = ({ value, onChange, label = 'MIASTO' }: CityPicke
       </TouchableOpacity>
 
       <TouchableOpacity
-        onPress={() => handleSelectCity(ALL_POLAND_CITY_LABEL)}
+        onPress={() => handleSelectCity(ALL_POLAND_CITY_LABEL, null)}
         style={[styles.cityItem, value === ALL_POLAND_CITY_LABEL && styles.cityItemActive]}
         activeOpacity={0.6}
       >

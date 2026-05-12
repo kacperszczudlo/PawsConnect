@@ -4,10 +4,10 @@ const PHOTON_BASE = 'https://photon.komoot.io';
 
 export type CitySearchResult = {
   id: string;
-  /** Value stored in profile / filter (primary locality name). */
   name: string;
-  /** Extra line for disambiguation (e.g. województwo). */
   subtitle?: string;
+  lat?: number;
+  lon?: number;
 };
 
 type PhotonFeature = {
@@ -44,7 +44,6 @@ function localityName(props: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-/** Best label for reverse results (avoid postcode / street as "name"). */
 function reverseLocalityName(props: Record<string, unknown>): string | undefined {
   const osmValue = props.osm_value;
   const skipName =
@@ -103,6 +102,19 @@ function featureId(feature: PhotonFeature, index: number): string {
   return osmId || `${lat},${lon}`;
 }
 
+function coordsFromFeature(feature: PhotonFeature): { lat: number; lon: number } | undefined {
+  const c = feature.geometry?.coordinates;
+  if (!c || c.length < 2) {
+    return undefined;
+  }
+  const lon = c[0];
+  const lat = c[1];
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return undefined;
+  }
+  return { lat, lon };
+}
+
 function parseSearchFeatures(data: PhotonResponse): CitySearchResult[] {
   const features = data.features ?? [];
   const rows: CitySearchResult[] = [];
@@ -131,20 +143,19 @@ function parseSearchFeatures(data: PhotonResponse): CitySearchResult[] {
       continue;
     }
     seen.add(dedupeKey);
+    const ll = coordsFromFeature(feature);
     rows.push({
       id: featureId(feature, i),
       name,
       subtitle,
+      lat: ll?.lat,
+      lon: ll?.lon,
     });
   }
 
   return rows;
 }
 
-/**
- * Forward geocoding: Polish cities / towns / villages via Photon (OpenStreetMap),
- * bounded to Poland. No API key; respect fair use (debounce in UI).
- */
 export async function searchPolishPlaces(
   query: string,
   signal?: AbortSignal,
@@ -154,7 +165,6 @@ export async function searchPolishPlaces(
     return [];
   }
 
-  // Photon rejects some `lang` values with 400 (e.g. `pl`). Omit lang; filter PL client-side.
   const bbox = POLAND_PHOTON_BBOX.join(',');
   const url = `${PHOTON_BASE}/api/?q=${encodeURIComponent(q)}&bbox=${bbox}&limit=25`;
 
@@ -174,9 +184,19 @@ export async function searchPolishPlaces(
   return parseSearchFeatures(data);
 }
 
-/**
- * Reverse geocoding: coordinates → locality name in Poland (Photon).
- */
+export async function geocodeCityCenter(
+  localityName: string,
+  signal?: AbortSignal,
+): Promise<{ lat: number; lon: number } | null> {
+  const rows = await searchPolishPlaces(localityName.trim(), signal);
+  for (const r of rows) {
+    if (r.lat != null && r.lon != null) {
+      return { lat: r.lat, lon: r.lon };
+    }
+  }
+  return null;
+}
+
 export async function reverseGeocodeLocality(
   lat: number,
   lon: number,

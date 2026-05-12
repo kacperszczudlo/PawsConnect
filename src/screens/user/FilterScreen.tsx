@@ -57,9 +57,9 @@ export const FilterScreen = ({ onClose }: FilterScreenProps) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <CityPickerField 
-          value={selectedCity ?? ''} 
-          onChange={(city) => setCity(city)} 
+        <CityPickerField
+          value={selectedCity ?? ''}
+          onChange={(city, ref) => setCity(city, ref)}
           label="LOKALIZACJA"
         />
         {typeSelector('GATUNEK', types, selectedType, setType)}
