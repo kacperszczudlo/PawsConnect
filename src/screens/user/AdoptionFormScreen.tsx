@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronLeft, Send, PawPrint } from 'lucide-react-native';
-import { Animal } from '../../store/useShelterStore';
+import { Animal } from '../../domain/shelter';
 import { useAuthStore } from '../../store/useAuthStore';
-import { supabase } from '../../services/supabase';
+import { applicationsRepository } from '../../repositories';
+import { useToast } from '../../context/ToastContext';
+import { useNetworkGuard } from '../../context/NetworkContext';
+import { friendlyErrorMessage } from '../../utils/networkErrors';
+import { buildApplicantApplicationFields } from '../../utils/buildApplicantApplicationFields';
 
 const buildShelterSnapshot = (animal: Animal) => ({
   shelter_name: animal.shelterName ?? '',
@@ -20,44 +24,60 @@ interface Props {
 
 export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
   const user = useAuthStore((state) => state.user);
+  const { showToast } = useToast();
+  const guardOnline = useNetworkGuard();
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!user?.id) {
-      Alert.alert('Błąd', 'Musisz być zalogowany, aby wysłać wniosek.');
+      showToast({ type: 'error', title: 'Błąd', message: 'Musisz być zalogowany, aby wysłać wniosek.' });
       return;
     }
 
     if (!reason.trim()) {
-      Alert.alert('Uzupełnij formularz', 'Opisz proszę, dlaczego chcesz adoptować to zwierzę.');
+      showToast({
+        type: 'info',
+        title: 'Uzupełnij formularz',
+        message: 'Opisz proszę, dlaczego chcesz adoptować to zwierzę.',
+      });
+      return;
+    }
+
+    if (!guardOnline()) {
       return;
     }
 
     setLoading(true);
-    const applicantName = user.user_metadata?.full_name || user.email || 'Użytkownik';
-    const dateLabel = new Date().toLocaleDateString('pl-PL');
-    const { error } = await supabase.from('applications').insert([
-      {
-        animal_id: animal.id,
-        animal_name: animal.name,
-        applicant_id: user.id,
-        applicant_name: applicantName,
-        type: 'Adopcja',
-        date: dateLabel,
-        status: 'Oczekujące',
-        ...buildShelterSnapshot(animal),
-      },
-    ]);
+    const row: Record<string, unknown> = {
+      animal_id: animal.id,
+      animal_name: animal.name,
+      applicant_id: user.id,
+      type: 'Adopcja',
+      status: 'Oczekujące',
+      date: '',
+      ...buildApplicantApplicationFields(user, { message: reason.trim() }),
+      ...buildShelterSnapshot(animal),
+    };
+    if (animal.shelterUserId) {
+      row.shelter_user_id = animal.shelterUserId;
+    }
+
+    const result = await applicationsRepository.submitUserApplication(row);
 
     setLoading(false);
 
-    if (error) {
-      Alert.alert('Błąd', `Nie udało się wysłać wniosku: ${error.message}`);
+    if (!result.ok) {
+      const err = result.error as { message?: string };
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: friendlyErrorMessage(result.error, `Nie udało się wysłać wniosku: ${err?.message ?? ''}`),
+      });
       return;
     }
 
-    Alert.alert('Sukces', 'Wniosek adopcyjny został wysłany.');
+    showToast({ type: 'success', message: 'Wniosek adopcyjny został wysłany.' });
     onSuccess();
   };
 
@@ -100,9 +120,7 @@ export const AdoptionFormScreen = ({ animal, onBack, onSuccess }: Props) => {
         </View>
 
         <View style={[styles.infoNote, { borderLeftColor: '#f97316' }]}>
-          <Text style={styles.infoText}>
-            Po wysłaniu wniosku nasi pracownicy skontaktują się z Tobą w ciągu 3 dni roboczych.
-          </Text>
+          <Text style={styles.infoText}>Odezwą się do Ciebie w ciągu 3 dni roboczych.</Text>
         </View>
 
         <View style={[styles.infoNote, { borderLeftColor: '#10b981', marginTop: 14 }] }>

@@ -6,13 +6,12 @@ import { View, Text } from 'react-native';
 import { AdminAnimalsScreen } from '../screens/admin/AdminAnimalsScreen';
 import { AdminApplicationsScreen } from '../screens/admin/AdminApplicationsScreen';
 import { ProfileScreen } from '../screens';
-import { useShelterStore } from '../store/useShelterStore';
+import { usePendingShelterApplicationsCount } from '../store/useShelterStore';
 
 const Tab = createBottomTabNavigator();
 
 export const AdminTabNavigator = () => {
-  const { applications } = useShelterStore();
-  const pendingCount = applications.filter(a => a.status === 'Oczekujące').length;
+  const pendingCount = usePendingShelterApplicationsCount();
 
   return (
     <Tab.Navigator

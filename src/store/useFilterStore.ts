@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 
 interface FilterState {
   selectedCity: string;
@@ -15,3 +16,17 @@ export const useFilterStore = create<FilterState>((set) => ({
   setType: (type) => set({ selectedType: type }),
   resetFilters: () => set({ selectedCity: 'Cała Polska', selectedType: null }),
 }));
+
+export const useFilterSelectionSlice = () =>
+  useFilterStore(useShallow((s) => ({ selectedCity: s.selectedCity, selectedType: s.selectedType })));
+
+export const useFilterEditorSlice = () =>
+  useFilterStore(
+    useShallow((s) => ({
+      selectedCity: s.selectedCity,
+      selectedType: s.selectedType,
+      setCity: s.setCity,
+      setType: s.setType,
+      resetFilters: s.resetFilters,
+    })),
+  );

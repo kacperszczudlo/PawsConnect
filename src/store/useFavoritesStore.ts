@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../services/supabase';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -112,3 +113,15 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   },
   isFavorite: (animalId) => get().favorites.includes(animalId),
 }));
+
+export const useFavoritesCatalogSlice = () =>
+  useFavoritesStore(useShallow((s) => ({ favorites: s.favorites, fetchFavorites: s.fetchFavorites })));
+
+export const useFavoritesInteractionsSlice = () =>
+  useFavoritesStore(
+    useShallow((s) => ({
+      favorites: s.favorites,
+      toggleFavorite: s.toggleFavorite,
+      fetchFavorites: s.fetchFavorites,
+    })),
+  );

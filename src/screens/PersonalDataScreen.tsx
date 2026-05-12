@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { syncProfileEverywhere } from '../services/profileSyncService';
+import { zustandProfileSyncShelterAdapter } from '../services/profileSync/zustandProfileSyncShelterAdapter';
 import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
+import { useToast } from '../context/ToastContext';
 
 export const PersonalDataScreen = () => {
   const navigation = useNavigation<any>();
   const { user, role, setUser } = useAuthStore();
+  const { showToast } = useToast();
   const isShelter = role === 'admin';
 
   const [name, setName] = useState(
@@ -27,34 +30,41 @@ export const PersonalDataScreen = () => {
       const normalizedPostalCode = normalizePostalCode(shelterPostalCode);
 
       if (!isValidPhone(normalizedPhone)) {
-        Alert.alert('Błąd', 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).');
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
+        });
         setLoading(false);
         return;
       }
 
       if (isShelter && !isValidPostalCode(normalizedPostalCode)) {
-        Alert.alert('Błąd', 'Podaj poprawny kod pocztowy w formacie 00-000.');
+        showToast({ type: 'error', title: 'Błąd', message: 'Podaj poprawny kod pocztowy w formacie 00-000.' });
         setLoading(false);
         return;
       }
 
-      const updatedUser = await syncProfileEverywhere({
-        role: isShelter ? 'admin' : 'user',
-        user: user!,
-        fullName: name,
-        city,
-        phone: normalizedPhone,
-        email: user?.email || '',
-        avatarUrl: user?.user_metadata?.avatar_url || null,
-        shelterStreet,
-        shelterPostalCode: normalizedPostalCode,
-      });
+      const updatedUser = await syncProfileEverywhere(
+        {
+          role: isShelter ? 'admin' : 'user',
+          user: user!,
+          fullName: name,
+          city,
+          phone: normalizedPhone,
+          email: user?.email || '',
+          avatarUrl: user?.user_metadata?.avatar_url || null,
+          shelterStreet,
+          shelterPostalCode: normalizedPostalCode,
+        },
+        zustandProfileSyncShelterAdapter,
+      );
 
       setUser(updatedUser);
-      Alert.alert('Sukces', 'Dane zostały zaktualizowane.');
+      showToast({ type: 'success', message: 'Dane zostały zaktualizowane.' });
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Błąd', error.message);
+      showToast({ type: 'error', title: 'Błąd', message: error.message });
     } finally {
       setLoading(false);
     }

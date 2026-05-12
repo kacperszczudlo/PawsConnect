@@ -1,14 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { Plus, Trash2, Pencil, PawPrint } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useShelterStore } from '../../store/useShelterStore';
-import { useCallback } from 'react';
+import { useShelterAnimalsAdminListSlice } from '../../store/useShelterStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { canShelterManageAnimal } from '../../utils/shelterAnimalOwnership';
 
 export const AdminAnimalsScreen = () => {
   const navigation = useNavigation();
-  const { animals, removeAnimal, fetchAnimals, isLoading } = useShelterStore();
+  const user = useAuthStore((state) => state.user);
+  const { animals, removeAnimal, fetchAnimals, isLoading } = useShelterAnimalsAdminListSlice();
+
+  const myAnimals = useMemo(
+    () => animals.filter((animal) => canShelterManageAnimal(animal, user)),
+    [animals, user],
+  );
 
   useEffect(() => {
     fetchAnimals();
@@ -20,7 +27,7 @@ export const AdminAnimalsScreen = () => {
     }, [fetchAnimals]),
   );
 
-  if (isLoading && animals.length === 0) {
+  if (isLoading && myAnimals.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
         <ActivityIndicator size="large" color="#10b981" />
@@ -48,7 +55,7 @@ export const AdminAnimalsScreen = () => {
           <Text style={{ fontWeight: 'bold', color: '#059669', fontSize: 16 }}>Dodaj nowego zwierzaka</Text>
         </TouchableOpacity>
 
-        {animals.map((animal) => (
+        {myAnimals.map((animal) => (
           <View key={animal.id} style={{ backgroundColor: '#ffffff', borderRadius: 24, padding: 12, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 1, elevation: 1, borderWidth: 1, borderColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center' }}>
             {animal.image ? (
               <Image source={{ uri: animal.image }} resizeMode="cover" style={{ width: 80, height: 80, borderRadius: 16, marginRight: 16 }} />

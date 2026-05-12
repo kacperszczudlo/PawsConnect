@@ -8,7 +8,6 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,12 +20,13 @@ import {
 } from 'lucide-react-native';
 import { CATEGORIES } from '../../constants/categories';
 import { FilterScreen } from './FilterScreen';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
-import { Animal, useShelterStore } from '../../store/useShelterStore';
-import { useFilterStore } from '../../store/useFilterStore';
+import { useFavoritesInteractionsSlice } from '../../store/useFavoritesStore';
+import { Animal, useShelterAnimalsHomeSlice } from '../../store/useShelterStore';
+import { useFilterSelectionSlice } from '../../store/useFilterStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { formatAgeBySex } from '../../utils/animalLabels';
 import { useCallback } from 'react';
+import { useToast } from '../../context/ToastContext';
 
 interface HomeScreenProps {
   onAnimalPress?: (animal: Animal) => void;
@@ -49,20 +49,23 @@ const getShelterLocationLabel = (animal: Animal) => {
 };
 
 export const HomeScreen = ({ onAnimalPress }: HomeScreenProps) => {
-  const { animals, fetchAnimals, isLoading } = useShelterStore();
-  const { selectedCity, selectedType } = useFilterStore();
+  const { showToast } = useToast();
+  const { animals, fetchAnimals, isLoading } = useShelterAnimalsHomeSlice();
+  const { selectedCity, selectedType } = useFilterSelectionSlice();
   const user = useAuthStore((state) => state.user);
   const [activeCategory, setActiveCategory] = useState('Wszystkie');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+  const { favorites, toggleFavorite, fetchFavorites } = useFavoritesInteractionsSlice();
 
   const handleToggleFavorite = async (animalId: string) => {
     const ok = await toggleFavorite(user?.id, animalId);
     if (!ok) {
-      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się zapisać w ulubionych. Sprawdź połączenie z internetem i spróbuj ponownie.',
+      });
     }
   };
 

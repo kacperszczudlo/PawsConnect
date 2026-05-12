@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { useFilterStore } from '../../store/useFilterStore';
+import { useFilterEditorSlice } from '../../store/useFilterStore';
 import { CityPickerField } from '../../components/CityPickerField';
 
 interface FilterScreenProps {
@@ -10,7 +10,7 @@ interface FilterScreenProps {
 }
 
 export const FilterScreen = ({ onClose }: FilterScreenProps) => {
-  const { selectedCity, selectedType, setCity, setType, resetFilters } = useFilterStore();
+  const { selectedCity, selectedType, setCity, setType, resetFilters } = useFilterEditorSlice();
 
   const types = ['Pies', 'Kot', 'Inne'];
 

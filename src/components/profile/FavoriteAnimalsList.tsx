@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Animal, useShelterStore } from '../../store/useShelterStore';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { Animal, useShelterAnimalsCatalogSlice } from '../../store/useShelterStore';
+import { useFavoritesCatalogSlice } from '../../store/useFavoritesStore';
 import { useAuthStore } from '../../store/useAuthStore';
 
 interface FavoriteAnimalsListProps {
@@ -10,9 +10,8 @@ interface FavoriteAnimalsListProps {
 
 export const FavoriteAnimalsList = ({ onAnimalPress }: FavoriteAnimalsListProps) => {
   const user = useAuthStore((state) => state.user);
-  const { animals, fetchAnimals } = useShelterStore();
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+  const { animals, fetchAnimals } = useShelterAnimalsCatalogSlice();
+  const { favorites, fetchFavorites } = useFavoritesCatalogSlice();
 
   useEffect(() => {
     void fetchAnimals();

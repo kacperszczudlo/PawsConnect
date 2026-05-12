@@ -6,7 +6,7 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity,
-  Alert,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -19,13 +19,14 @@ import {
   CalendarCheck,
   PawPrint,
 } from 'lucide-react-native';
-import { Animal } from '../../store/useShelterStore';
+import { Animal } from '../../domain/shelter';
 import { WalkReservationScreen } from './WalkReservationScreen';
 import { AdoptionFormScreen } from './AdoptionFormScreen';
-import { useFavoritesStore } from '../../store/useFavoritesStore';
+import { useFavoritesInteractionsSlice } from '../../store/useFavoritesStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { supabase } from '../../services/supabase';
+import { animalsRepository } from '../../repositories';
 import { formatAgeBySex } from '../../utils/animalLabels';
+import { useToast } from '../../context/ToastContext';
 
 interface DetailsScreenProps {
   animal: Animal;
@@ -33,12 +34,11 @@ interface DetailsScreenProps {
 }
 
 export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
+  const { showToast } = useToast();
   const [subScreen, setSubScreen] = useState<'walk' | 'adopt' | null>(null);
   const [currentAnimal, setCurrentAnimal] = useState(animal);
   const user = useAuthStore((state) => state.user);
-  const favorites = useFavoritesStore((state) => state.favorites);
-  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite);
-  const fetchFavorites = useFavoritesStore((state) => state.fetchFavorites);
+  const { favorites, toggleFavorite, fetchFavorites } = useFavoritesInteractionsSlice();
 
   useEffect(() => {
     setCurrentAnimal(animal);
@@ -49,31 +49,13 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
 
     const loadAnimal = async () => {
       try {
-        const { data } = await supabase
-          .from('animals')
-          .select('id,name,city,shelter_name,shelter_address,shelter_phone,shelter_email,type,breed,age,description,image,sex,weight,color')
-          .eq('id', animal.id)
-          .maybeSingle();
+        const loaded = await animalsRepository.fetchById(animal.id);
 
-        if (active && data) {
+        if (active && loaded) {
           setCurrentAnimal({
-            id: String(data.id),
-            name: data.name ?? animal.name,
-            city: data.city ?? animal.city,
-            shelterName: data.shelter_name ?? animal.shelterName,
-            shelterAddress: data.shelter_address ?? animal.shelterAddress,
-            shelterPhone: data.shelter_phone ?? animal.shelterPhone,
-            shelterEmail: data.shelter_email ?? animal.shelterEmail,
-            type: data.type ?? animal.type,
-            breed: data.breed ?? animal.breed,
-            age: data.age ?? animal.age,
-            description: data.description ?? animal.description,
-            image: data.image ?? animal.image,
-            sex: data.sex ?? animal.sex,
+            ...loaded,
             liked: animal.liked,
-            gender: animal.gender,
-            weight: data.weight ?? animal.weight,
-            color: data.color ?? animal.color,
+            gender: animal.gender ?? loaded.gender,
           });
         }
       } catch {
@@ -90,18 +72,77 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
     };
   }, [animal]);
 
+  const locationText =
+    currentAnimal.shelterName && currentAnimal.shelterAddress
+      ? `${currentAnimal.shelterName} • ${currentAnimal.shelterAddress}`
+      : currentAnimal.shelterName || (currentAnimal.city ? `Schronisko • ${currentAnimal.city}` : 'Schronisko');
+
   const handleToggleFavorite = async () => {
     const ok = await toggleFavorite(user?.id, animal.id);
     if (!ok) {
-      Alert.alert('Błąd', 'Nie udało się zapisać ulubionego. Sprawdź uprawnienia w bazie (RLS).');
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się zapisać w ulubionych. Sprawdź połączenie z internetem i spróbuj ponownie.',
+      });
+    }
+  };
+
+  const buildShareMessage = () => {
+    const shareAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
+    const typeLabel = currentAnimal.type ?? 'Zwierzak do adopcji';
+    const breedLabel = currentAnimal.breed ?? 'Brak danych';
+    const sexLabel = currentAnimal.sex ?? currentAnimal.gender ?? 'Nieznana płeć';
+    const weightLabel = currentAnimal.weight ?? 'Brak danych';
+    const descriptionSnippet = (currentAnimal.description ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 220);
+
+    const introLine = descriptionSnippet
+      ? `${currentAnimal.name} czeka na dom. ${descriptionSnippet}${descriptionSnippet.length >= 220 ? '...' : ''}`
+      : `${currentAnimal.name} czeka na kochający dom i odpowiedzialnego opiekuna.`;
+
+    const lines = [
+      `OGŁOSZENIE ADOPCYJNE — ${currentAnimal.name}`,
+      introLine,
+      '',
+      'Najważniejsze informacje:',
+      `Typ: ${typeLabel}`,
+      `Rasa: ${breedLabel}`,
+      `Płeć: ${sexLabel}`,
+      `Wiek: ${shareAge}`,
+      `Waga: ${weightLabel}`,
+      `Lokalizacja: ${locationText}`,
+      '',
+      'Kontakt w sprawie adopcji:',
+      currentAnimal.shelterPhone ? `Telefon: ${currentAnimal.shelterPhone}` : 'Telefon: Brak danych',
+      currentAnimal.shelterEmail ? `E-mail: ${currentAnimal.shelterEmail}` : 'E-mail: Brak danych',
+      '',
+      'Jeśli chcesz poznać zwierzaka i dać mu dom, skontaktuj się ze schroniskiem.',
+      '',
+      'Udostępnione z aplikacji PawsConnect.',
+    ].filter(Boolean);
+
+    return lines.join('\n');
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: buildShareMessage(),
+        title: `Udostępnij ogłoszenie: ${currentAnimal.name}`,
+      });
+    } catch {
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nie udało się udostępnić ogłoszenia. Spróbuj ponownie.',
+      });
     }
   };
 
   const formattedAge = formatAgeBySex(currentAnimal.age, currentAnimal.sex ?? currentAnimal.gender);
-
-  const locationText = currentAnimal.shelterName && currentAnimal.shelterAddress
-    ? `${currentAnimal.shelterName} • ${currentAnimal.shelterAddress}`
-    : currentAnimal.shelterName || (currentAnimal.city ? `Schronisko • ${currentAnimal.city}` : 'Schronisko');
 
   useEffect(() => {
     if (user?.id) {
@@ -131,7 +172,7 @@ export const DetailsScreen = ({ animal, onBack }: DetailsScreenProps) => {
             <ChevronLeft size={24} color="#1e293b" />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={styles.iconBtn}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => void handleShare()}>
               <Share2 size={20} color="#1e293b" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={() => void handleToggleFavorite()}>
