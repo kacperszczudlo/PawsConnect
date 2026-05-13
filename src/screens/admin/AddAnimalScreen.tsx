@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { ChevronLeft, Camera } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { Animal, useShelterAnimalsFormActionsSlice } from '../../store/useShelterStore';
+import { useShelterAnimalsFormActionsSlice } from '../../store/useShelterStore';
+import type { AdminStackParamList } from '../../navigation/AdminStack';
 import { useAuthStore } from '../../store/useAuthStore';
 import { uploadAnimalImage } from '../../services/imageService';
 import { useToast } from '../../context/ToastContext';
@@ -15,9 +25,10 @@ export const AddAnimalScreen = () => {
   const navigation = useNavigation();
   const { showToast } = useToast();
   const guardOnline = useNetworkGuard();
-  const route = useRoute<any>();
-  const editingAnimal = route.params?.animal as Animal | undefined;
-  const { addAnimal, updateAnimal, fetchAnimals } = useShelterAnimalsFormActionsSlice();
+  const route = useRoute<RouteProp<AdminStackParamList, 'AddAnimal'>>();
+  const editingAnimal = route.params?.animal;
+  const { addAnimal, updateAnimal, fetchAnimals } =
+    useShelterAnimalsFormActionsSlice();
   const { user } = useAuthStore();
   const adminCity = user?.user_metadata?.city || 'Nieznane';
   const adminShelterName = user?.user_metadata?.shelter_name || 'Schronisko';
@@ -25,7 +36,9 @@ export const AddAnimalScreen = () => {
   const adminPostalCode = user?.user_metadata?.shelter_postal_code || '';
   const adminPhone = user?.user_metadata?.phone || '';
   const adminEmail = user?.email || '';
-  const adminAddress = [adminCity, adminStreet, adminPostalCode].filter(Boolean).join(', ');
+  const adminAddress = [adminCity, adminStreet, adminPostalCode]
+    .filter(Boolean)
+    .join(', ');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -33,7 +46,8 @@ export const AddAnimalScreen = () => {
   const [weight, setWeight] = useState('');
   const [color, setColor] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [imageAsset, setImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [imageAsset, setImageAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const [type, setType] = useState('Pies');
@@ -85,15 +99,25 @@ export const AddAnimalScreen = () => {
 
   const handlePublish = async () => {
     if (!name) {
-      showToast({ type: 'info', title: 'Brak danych', message: 'Proszę podać przynajmniej imię zwierzaka.' });
-      return;
-    }
-
-    if (!adminShelterName.trim() || !adminAddress.trim() || !adminPhone.trim() || !adminEmail.trim()) {
       showToast({
         type: 'info',
         title: 'Brak danych',
-        message: 'Uzupełnij dane schroniska w Ustawieniach (nazwa, adres, telefon, e-mail).',
+        message: 'Proszę podać przynajmniej imię zwierzaka.',
+      });
+      return;
+    }
+
+    if (
+      !adminShelterName.trim() ||
+      !adminAddress.trim() ||
+      !adminPhone.trim() ||
+      !adminEmail.trim()
+    ) {
+      showToast({
+        type: 'info',
+        title: 'Brak danych',
+        message:
+          'Uzupełnij dane schroniska w Ustawieniach (nazwa, adres, telefon, e-mail).',
       });
       return;
     }
@@ -107,9 +131,16 @@ export const AddAnimalScreen = () => {
     if (imageAsset) {
       setIsUploading(true);
       try {
-        const uploadedUrl = await uploadAnimalImage(imageAsset, user?.id || 'unknown');
+        const uploadedUrl = await uploadAnimalImage(
+          imageAsset,
+          user?.id || 'unknown',
+        );
         if (!uploadedUrl) {
-          showToast({ type: 'error', title: 'Błąd', message: 'Nie udało się wgrać zdjęcia. Spróbuj ponownie.' });
+          showToast({
+            type: 'error',
+            title: 'Błąd',
+            message: 'Nie udało się wgrać zdjęcia. Spróbuj ponownie.',
+          });
           setIsUploading(false);
           return;
         }
@@ -118,7 +149,10 @@ export const AddAnimalScreen = () => {
         showToast({
           type: 'error',
           title: 'Błąd',
-          message: friendlyErrorMessage(error, 'Błąd podczas wgrywania zdjęcia.'),
+          message: friendlyErrorMessage(
+            error,
+            'Błąd podczas wgrywania zdjęcia.',
+          ),
         });
         setIsUploading(false);
         return;
@@ -126,7 +160,11 @@ export const AddAnimalScreen = () => {
     }
 
     if (!finalImageUrl && !editingAnimal) {
-      showToast({ type: 'info', title: 'Brak zdjęcia', message: 'Dodaj zdjęcie zwierzaka przed publikacją.' });
+      showToast({
+        type: 'info',
+        title: 'Brak zdjęcia',
+        message: 'Dodaj zdjęcie zwierzaka przed publikacją.',
+      });
       setIsUploading(false);
       return;
     }
@@ -157,7 +195,9 @@ export const AddAnimalScreen = () => {
         showToast({
           type: 'error',
           title: 'Błąd',
-          message: editingAnimal ? 'Nie udało się zaktualizować ogłoszenia.' : 'Nie udało się opublikować ogłoszenia.',
+          message: editingAnimal
+            ? 'Nie udało się zaktualizować ogłoszenia.'
+            : 'Nie udało się opublikować ogłoszenia.',
         });
         setIsUploading(false);
         return;
@@ -166,7 +206,9 @@ export const AddAnimalScreen = () => {
       await fetchAnimals();
       showToast({
         type: 'success',
-        message: editingAnimal ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.',
+        message: editingAnimal
+          ? 'Ogłoszenie zostało zaktualizowane.'
+          : 'Ogłoszenie zostało opublikowane.',
       });
       setIsUploading(false);
       navigation.goBack();
@@ -174,17 +216,41 @@ export const AddAnimalScreen = () => {
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: friendlyErrorMessage(error, 'Wystąpił błąd podczas zapisu ogłoszenia.'),
+        message: friendlyErrorMessage(
+          error,
+          'Wystąpił błąd podczas zapisu ogłoszenia.',
+        ),
       });
       setIsUploading(false);
     }
   };
 
-  const SelectorGroup = ({ label, options, selected, onSelect }: { label: string, options: string[], selected: string, onSelect: (val: string) => void }) => (
+  const SelectorGroup = ({
+    label,
+    options,
+    selected,
+    onSelect,
+  }: {
+    label: string;
+    options: string[];
+    selected: string;
+    onSelect: (val: string) => void;
+  }) => (
     <View style={{ marginBottom: 16 }}>
-      <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>{label}</Text>
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: 'bold',
+          color: '#94a3b8',
+          textTransform: 'uppercase',
+          marginLeft: 4,
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {options.map(opt => (
+        {options.map((opt) => (
           <TouchableOpacity
             key={opt}
             onPress={() => onSelect(opt)}
@@ -197,7 +263,15 @@ export const AddAnimalScreen = () => {
               borderColor: selected === opt ? '#10b981' : '#e2e8f0',
             }}
           >
-            <Text style={{ color: selected === opt ? 'white' : '#64748b', fontWeight: 'bold', fontSize: 14 }}>{opt}</Text>
+            <Text
+              style={{
+                color: selected === opt ? 'white' : '#64748b',
+                fontWeight: 'bold',
+                fontSize: 14,
+              }}
+            >
+              {opt}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -206,10 +280,32 @@ export const AddAnimalScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc', paddingTop: 48 }}>
-      <View style={{ paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+      <View
+        style={{
+          paddingHorizontal: 24,
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 24,
+        }}
+      >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={{ width: 40, height: 40, backgroundColor: 'white', borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 1, elevation: 1, borderWidth: 1, borderColor: '#f1f5f9', marginRight: 16 }}
+          style={{
+            width: 40,
+            height: 40,
+            backgroundColor: 'white',
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 1,
+            elevation: 1,
+            borderWidth: 1,
+            borderColor: '#f1f5f9',
+            marginRight: 16,
+          }}
         >
           <ChevronLeft size={24} color="#1e293b" />
         </TouchableOpacity>
@@ -218,20 +314,52 @@ export const AddAnimalScreen = () => {
         </Text>
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 24 }} contentContainerStyle={{ paddingBottom: 40 }}>
-
+      <ScrollView
+        style={{ flex: 1, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Zdjęcie zwierzaka</Text>
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: '#94a3b8',
+              textTransform: 'uppercase',
+              marginLeft: 4,
+              marginBottom: 6,
+            }}
+          >
+            Zdjęcie zwierzaka
+          </Text>
           <TouchableOpacity
             onPress={pickImage}
-            style={{ width: '100%', height: 160, backgroundColor: 'white', borderWidth: 2, borderColor: '#a7f3d0', borderStyle: 'dashed', borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+            style={{
+              width: '100%',
+              height: 160,
+              backgroundColor: 'white',
+              borderWidth: 2,
+              borderColor: '#a7f3d0',
+              borderStyle: 'dashed',
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
           >
             {imageUri ? (
-              <Image source={{ uri: imageUri }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+              <Image
+                source={{ uri: imageUri }}
+                resizeMode="cover"
+                style={{ width: '100%', height: '100%' }}
+              />
             ) : (
               <View style={{ alignItems: 'center' }}>
                 <Camera size={32} color="#10b981" style={{ marginBottom: 8 }} />
-                <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 14 }}>Kliknij, aby wgrać zdjęcie</Text>
+                <Text
+                  style={{ color: '#059669', fontWeight: 'bold', fontSize: 14 }}
+                >
+                  Kliknij, aby wgrać zdjęcie
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -239,23 +367,98 @@ export const AddAnimalScreen = () => {
 
         <View style={{ gap: 16, marginBottom: 8 }}>
           <View>
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Imię zwierzaka</Text>
-            <TextInput value={name} onChangeText={setName} placeholder="np. Reksio" style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, fontSize: 15, color: '#1e293b' }} />
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                marginLeft: 4,
+                marginBottom: 6,
+              }}
+            >
+              Imię zwierzaka
+            </Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="np. Reksio"
+              style={{
+                backgroundColor: 'white',
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 12,
+                fontSize: 15,
+                color: '#1e293b',
+              }}
+            />
           </View>
         </View>
 
-        <SelectorGroup label="Gatunek" options={['Pies', 'Kot', 'Inne']} selected={type} onSelect={setType} />
-        <SelectorGroup label="Płeć" options={['Samiec', 'Samica']} selected={sex} onSelect={setSex} />
-        <SelectorGroup label="Wiek" options={['Szczeniak/Kocię', 'Młody', 'Dorosły', 'Senior']} selected={age} onSelect={setAge} />
+        <SelectorGroup
+          label="Gatunek"
+          options={['Pies', 'Kot', 'Inne']}
+          selected={type}
+          onSelect={setType}
+        />
+        <SelectorGroup
+          label="Płeć"
+          options={['Samiec', 'Samica']}
+          selected={sex}
+          onSelect={setSex}
+        />
+        <SelectorGroup
+          label="Wiek"
+          options={['Szczeniak/Kocię', 'Młody', 'Dorosły', 'Senior']}
+          selected={age}
+          onSelect={setAge}
+        />
 
         <View style={{ gap: 16, marginBottom: 8 }}>
           <View>
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Dane schroniska (z profilu)</Text>
-            <View style={{ backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
-              <Text style={{ color: '#1e293b', fontSize: 14, fontWeight: '700', marginBottom: 4 }}>{adminShelterName || 'Brak nazwy schroniska'}</Text>
-              <Text style={{ color: '#475569', fontSize: 13 }}>{adminAddress || 'Brak adresu schroniska'}</Text>
-              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>{adminPhone || 'Brak telefonu kontaktowego'}</Text>
-              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>{adminEmail || 'Brak e-maila kontaktowego'}</Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                marginLeft: 4,
+                marginBottom: 6,
+              }}
+            >
+              Dane schroniska (z profilu)
+            </Text>
+            <View
+              style={{
+                backgroundColor: '#f8fafc',
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+              }}
+            >
+              <Text
+                style={{
+                  color: '#1e293b',
+                  fontSize: 14,
+                  fontWeight: '700',
+                  marginBottom: 4,
+                }}
+              >
+                {adminShelterName || 'Brak nazwy schroniska'}
+              </Text>
+              <Text style={{ color: '#475569', fontSize: 13 }}>
+                {adminAddress || 'Brak adresu schroniska'}
+              </Text>
+              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>
+                {adminPhone || 'Brak telefonu kontaktowego'}
+              </Text>
+              <Text style={{ color: '#475569', fontSize: 13, marginTop: 3 }}>
+                {adminEmail || 'Brak e-maila kontaktowego'}
+              </Text>
             </View>
           </View>
         </View>
@@ -263,41 +466,167 @@ export const AddAnimalScreen = () => {
         <View style={{ gap: 16 }}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Waga</Text>
-              <TextInput value={weight} onChangeText={setWeight} placeholder="np. 12 kg" style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, fontSize: 15, color: '#1e293b' }} />
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: 'bold',
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  marginLeft: 4,
+                  marginBottom: 6,
+                }}
+              >
+                Waga
+              </Text>
+              <TextInput
+                value={weight}
+                onChangeText={setWeight}
+                placeholder="np. 12 kg"
+                style={{
+                  backgroundColor: 'white',
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  fontSize: 15,
+                  color: '#1e293b',
+                }}
+              />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Umaszczenie</Text>
-              <TextInput value={color} onChangeText={setColor} placeholder="np. Czarne" style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, fontSize: 15, color: '#1e293b' }} />
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: 'bold',
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  marginLeft: 4,
+                  marginBottom: 6,
+                }}
+              >
+                Umaszczenie
+              </Text>
+              <TextInput
+                value={color}
+                onChangeText={setColor}
+                placeholder="np. Czarne"
+                style={{
+                  backgroundColor: 'white',
+                  borderWidth: 1,
+                  borderColor: '#e2e8f0',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  fontSize: 15,
+                  color: '#1e293b',
+                }}
+              />
             </View>
           </View>
 
           <View>
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Rasa</Text>
-            <TextInput value={breed} onChangeText={setBreed} placeholder="np. Mieszaniec" style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, fontSize: 15, color: '#1e293b' }} />
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                marginLeft: 4,
+                marginBottom: 6,
+              }}
+            >
+              Rasa
+            </Text>
+            <TextInput
+              value={breed}
+              onChangeText={setBreed}
+              placeholder="np. Mieszaniec"
+              style={{
+                backgroundColor: 'white',
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 12,
+                fontSize: 15,
+                color: '#1e293b',
+              }}
+            />
           </View>
 
           <View>
-            <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginLeft: 4, marginBottom: 6 }}>Krótki opis</Text>
-            <TextInput value={description} onChangeText={setDescription} placeholder="Napisz coś o zwierzaku..." multiline style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, fontSize: 15, color: '#1e293b', height: 100, textAlignVertical: 'top' }} />
+            <Text
+              style={{
+                fontSize: 10,
+                fontWeight: 'bold',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                marginLeft: 4,
+                marginBottom: 6,
+              }}
+            >
+              Krótki opis
+            </Text>
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Napisz coś o zwierzaku..."
+              multiline
+              style={{
+                backgroundColor: 'white',
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderRadius: 12,
+                fontSize: 15,
+                color: '#1e293b',
+                height: 100,
+                textAlignVertical: 'top',
+              }}
+            />
           </View>
 
           <TouchableOpacity
             onPress={handlePublish}
             disabled={isUploading}
-            style={{ width: '100%', backgroundColor: isUploading ? '#cbd5e1' : '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}
+            style={{
+              width: '100%',
+              backgroundColor: isUploading ? '#cbd5e1' : '#10b981',
+              paddingVertical: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginTop: 8,
+              shadowColor: '#10b981',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
           >
             {isUploading ? (
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Wgrywanie zdjęcia...</Text>
+                <ActivityIndicator
+                  size="small"
+                  color="white"
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}
+                >
+                  Wgrywanie zdjęcia...
+                </Text>
               </View>
             ) : (
-              <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Opublikuj ogłoszenie</Text>
+              <Text
+                style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}
+              >
+                Opublikuj ogłoszenie
+              </Text>
             )}
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </View>
   );

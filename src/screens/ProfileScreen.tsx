@@ -1,11 +1,25 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { MapPin, Mail, Phone, LogOut, Settings, Home, User } from 'lucide-react-native';
+import {
+  MapPin,
+  Mail,
+  Phone,
+  LogOut,
+  Settings,
+  Home,
+  User,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 
+type ProfileNavigationParamList = {
+  Settings: undefined;
+};
+
 export const ProfileScreen = () => {
-  const navigation = useNavigation<any>();
+  const navigation =
+    useNavigation<NavigationProp<ProfileNavigationParamList>>();
   const { user, role, signOut } = useAuthStore();
 
   const isShelter = role === 'admin';
@@ -96,11 +110,17 @@ export const ProfileScreen = () => {
                   justifyContent: 'center',
                 }}
               >
-                {isShelter ? <Home size={38} color="#94a3b8" /> : <User size={38} color="#94a3b8" />}
+                {isShelter ? (
+                  <Home size={38} color="#94a3b8" />
+                ) : (
+                  <User size={38} color="#94a3b8" />
+                )}
               </View>
             )}
           </View>
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>{displayName}</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>
+            {displayName}
+          </Text>
 
           <View
             style={{
@@ -157,9 +177,22 @@ export const ProfileScreen = () => {
           >
             {isShelter ? 'Lokalizacja' : 'Twoje Miasto'}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}
+          >
             <MapPin size={16} color="#94a3b8" />
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#1e293b',
+                marginLeft: 8,
+              }}
+            >
               {city}
             </Text>
           </View>
@@ -176,9 +209,22 @@ export const ProfileScreen = () => {
           >
             {isShelter ? 'Służbowy adres e-mail' : 'Adres e-mail'}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16,
+            }}
+          >
             <Mail size={16} color="#94a3b8" />
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#1e293b',
+                marginLeft: 8,
+              }}
+            >
               {email}
             </Text>
           </View>
@@ -197,7 +243,14 @@ export const ProfileScreen = () => {
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Phone size={16} color="#94a3b8" />
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginLeft: 8 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#1e293b',
+                marginLeft: 8,
+              }}
+            >
               {phone}
             </Text>
           </View>
@@ -225,7 +278,14 @@ export const ProfileScreen = () => {
           }}
         >
           <LogOut size={20} color="#ef4444" />
-          <Text style={{ fontWeight: 'bold', color: '#ef4444', fontSize: 14, marginLeft: 8 }}>
+          <Text
+            style={{
+              fontWeight: 'bold',
+              color: '#ef4444',
+              fontSize: 14,
+              marginLeft: 8,
+            }}
+          >
             Wyloguj się z systemu
           </Text>
         </TouchableOpacity>

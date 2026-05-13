@@ -8,35 +8,34 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { PawPrint, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../navigation/AuthStack';
 import { useToast } from '../context/ToastContext';
 import { useNetworkGuard } from '../context/NetworkContext';
 import { friendlyErrorMessage } from '../utils/networkErrors';
 
-type LoginScreenProps = {
-  onRegisterPress?: () => void;
-  onLoginPress?: () => void;
-};
-
-export const LoginScreen = ({
-  onRegisterPress,
-  onLoginPress,
-}: LoginScreenProps) => {
+export const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const navigation = useNavigation<any>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { showToast } = useToast();
   const guardOnline = useNetworkGuard();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Proszę wypełnić wszystkie pola' });
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Proszę wypełnić wszystkie pola',
+      });
       return;
     }
 
@@ -59,9 +58,6 @@ export const LoginScreen = ({
       });
     } else {
       showToast({ type: 'success', message: 'Udało się zalogować!' });
-      if (onLoginPress) {
-        onLoginPress();
-      }
     }
   };
 
@@ -125,7 +121,11 @@ export const LoginScreen = ({
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+            disabled={loading}
+          >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (

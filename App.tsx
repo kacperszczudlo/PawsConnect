@@ -15,10 +15,10 @@ import { ToastProvider } from './src/context/ToastContext';
 import { NetworkProvider } from './src/context/NetworkContext';
 
 export default function App() {
-  const { session, setSession, setUser, isLoading, setLoading, role } = useAuthStore();
-  
-  const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
+  const { session, setSession, setUser, isLoading, setLoading, role } =
+    useAuthStore();
 
+  const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,7 +27,10 @@ export default function App() {
       setLoading(true);
 
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
         if (!isMounted) {
           return;
@@ -88,12 +91,13 @@ export default function App() {
             {session?.user ? (
               role === 'admin' ? (
                 <AdminStack />
+              ) : selectedAnimal ? (
+                <DetailsScreen
+                  animal={selectedAnimal}
+                  onBack={() => setSelectedAnimal(null)}
+                />
               ) : (
-                selectedAnimal ? (
-                  <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
-                ) : (
-                  <UserStack onAnimalPress={setSelectedAnimal} />
-                )
+                <UserStack onAnimalPress={setSelectedAnimal} />
               )
             ) : (
               <AuthStack />
