@@ -25,14 +25,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     setUser: (user) =>
         set({
             user,
-            role: (user?.user_metadata?.role as UserRole | undefined) ?? 'user',
+            role: user ? (user.user_metadata?.role as UserRole | undefined) ?? 'user' : null,
         }),
     setSession: (session) => set({ session }),
     setLoading: (isLoading) => set({ isLoading }),
 
     signOut: async () => {
         set({ isLoading: true });
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         set({ user: null, session: null, isLoading: false, role: null });
     },
 }));
