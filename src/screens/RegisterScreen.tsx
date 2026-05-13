@@ -9,26 +9,37 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
-import { PawPrint, Mail, Lock, Eye, EyeOff, User, Phone, Building2, MapPin } from 'lucide-react-native';
+import {
+  PawPrint,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  User,
+  Phone,
+  Building2,
+  MapPin,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../services/supabase';
 import type { AuthStackParamList } from '../navigation/AuthStack';
 import { CityPickerField } from '../components/CityPickerField';
-import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
+import {
+  isValidPhone,
+  isValidPostalCode,
+  normalizePhone,
+  normalizePostalCode,
+} from '../utils/validation';
 import { useToast } from '../context/ToastContext';
 import { useNetworkGuard } from '../context/NetworkContext';
 import { friendlyErrorMessage } from '../utils/networkErrors';
 
 type RoleType = 'user' | 'admin';
 
-type RegisterScreenProps = {
-  onLoginPress?: () => void;
-};
-
-export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
+export const RegisterScreen = () => {
   const [roleType, setRoleType] = useState<RoleType>('user');
   const [name, setName] = useState('');
   const [shelterName, setShelterName] = useState('');
@@ -41,17 +52,12 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const formAnimation = useState(() => new Animated.Value(0))[0];
   const [loading, setLoading] = useState(false);
-  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { showToast } = useToast();
   const guardOnline = useNetworkGuard();
 
-  const goToLogin = () => {
-    if (onLoginPress) {
-      onLoginPress();
-      return;
-    }
-    navigation.navigate('Login');
-  };
+  const goToLogin = () => navigation.navigate('Login');
 
   const handleRegister = async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -66,10 +72,23 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
     const hasMissingUserFields = roleType === 'user' && !normalizedName;
     const hasMissingAdminFields =
       roleType === 'admin' &&
-      (!normalizedShelterName || !normalizedCity || !normalizedShelterStreet || !normalizedShelterPostalCode);
+      (!normalizedShelterName ||
+        !normalizedCity ||
+        !normalizedShelterStreet ||
+        !normalizedShelterPostalCode);
 
-    if (!normalizedEmail || !normalizedPassword || !normalizedPhone || hasMissingUserFields || hasMissingAdminFields) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Proszę wypełnić wszystkie pola' });
+    if (
+      !normalizedEmail ||
+      !normalizedPassword ||
+      !normalizedPhone ||
+      hasMissingUserFields ||
+      hasMissingAdminFields
+    ) {
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Proszę wypełnić wszystkie pola',
+      });
       return;
     }
 
@@ -77,13 +96,21 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       showToast({
         type: 'error',
         title: 'Błąd',
-        message: 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
+        message:
+          'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
       });
       return;
     }
 
-    if (roleType === 'admin' && !isValidPostalCode(normalizedShelterPostalCode)) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Podaj poprawny kod pocztowy w formacie 00-000.' });
+    if (
+      roleType === 'admin' &&
+      !isValidPostalCode(normalizedShelterPostalCode)
+    ) {
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Podaj poprawny kod pocztowy w formacie 00-000.',
+      });
       return;
     }
 
@@ -93,16 +120,17 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
 
     setLoading(true);
     try {
-      const metadata = roleType === 'admin'
-        ? {
-            role: 'admin',
-            shelter_name: normalizedShelterName,
-            city: normalizedCity,
-            shelter_street: normalizedShelterStreet,
-            shelter_postal_code: normalizedShelterPostalCode,
-            phone: normalizedPhone,
-          }
-        : { role: 'user', full_name: normalizedName, phone: normalizedPhone };
+      const metadata =
+        roleType === 'admin'
+          ? {
+              role: 'admin',
+              shelter_name: normalizedShelterName,
+              city: normalizedCity,
+              shelter_street: normalizedShelterStreet,
+              shelter_postal_code: normalizedShelterPostalCode,
+              phone: normalizedPhone,
+            }
+          : { role: 'user', full_name: normalizedName, phone: normalizedPhone };
 
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -157,7 +185,7 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       style={styles.container}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         scrollEnabled={true}
         keyboardShouldPersistTaps="handled"
@@ -192,28 +220,56 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
           <View style={styles.roleTabs}>
             <TouchableOpacity
               onPress={() => setRoleType('user')}
-              style={[styles.roleTabButton, roleType === 'user' && styles.roleTabButtonActive]}
+              style={[
+                styles.roleTabButton,
+                roleType === 'user' && styles.roleTabButtonActive,
+              ]}
               activeOpacity={0.9}
             >
-              <Text style={[styles.roleTabText, roleType === 'user' && styles.roleTabTextActive]}>Szukam przyjaciela</Text>
+              <Text
+                style={[
+                  styles.roleTabText,
+                  roleType === 'user' && styles.roleTabTextActive,
+                ]}
+              >
+                Szukam przyjaciela
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setRoleType('admin')}
-              style={[styles.roleTabButton, roleType === 'admin' && styles.roleTabButtonActive]}
+              style={[
+                styles.roleTabButton,
+                roleType === 'admin' && styles.roleTabButtonActive,
+              ]}
               activeOpacity={0.9}
             >
-              <Text style={[styles.roleTabText, roleType === 'admin' && styles.roleTabTextActive]}>Jestem schroniskiem</Text>
+              <Text
+                style={[
+                  styles.roleTabText,
+                  roleType === 'admin' && styles.roleTabTextActive,
+                ]}
+              >
+                Jestem schroniskiem
+              </Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputLabel}>
-            <Text style={styles.labelText}>{roleType === 'admin' ? 'NAZWA SCHRONISKA' : 'IMIĘ I NAZWISKO'}</Text>
+            <Text style={styles.labelText}>
+              {roleType === 'admin' ? 'NAZWA SCHRONISKA' : 'IMIĘ I NAZWISKO'}
+            </Text>
           </View>
           <View style={styles.inputContainer}>
-            {roleType === 'admin' ? <Building2 color="#94a3b8" size={20} /> : <User color="#94a3b8" size={20} />}
+            {roleType === 'admin' ? (
+              <Building2 color="#94a3b8" size={20} />
+            ) : (
+              <User color="#94a3b8" size={20} />
+            )}
             <TextInput
               style={styles.input}
-              placeholder={roleType === 'admin' ? 'Schronisko Nadzieja' : 'Jan Kowalski'}
+              placeholder={
+                roleType === 'admin' ? 'Schronisko Nadzieja' : 'Jan Kowalski'
+              }
               placeholderTextColor="#94a3b8"
               value={roleType === 'admin' ? shelterName : name}
               onChangeText={roleType === 'admin' ? setShelterName : setName}
@@ -310,7 +366,11 @@ export const RegisterScreen = ({ onLoginPress }: RegisterScreenProps) => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleRegister} disabled={loading}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleRegister}
+            disabled={loading}
+          >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (

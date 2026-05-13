@@ -47,9 +47,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key must be set in environment variables');
 }
 
+const supabaseProjectRef = new URL(supabaseUrl).hostname.split('.')[0];
+export const supabaseAuthStorageKey = `sb-${supabaseProjectRef}-auth-token`;
+
+export const clearSupabaseAuthSession = async () => {
+	await safeStorage.removeItem(supabaseAuthStorageKey);
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 	auth: {
 		storage: safeStorage,
+		storageKey: supabaseAuthStorageKey,
 		autoRefreshToken: true,
 		persistSession: true,
 		detectSessionInUrl: false,

@@ -9,25 +9,58 @@ import { DetailsScreen } from './src/screens/user/DetailsScreen';
 import { UserStack } from './src/navigation/UserStack';
 
 import { Animal } from './src/store/useShelterStore';
-import { supabase } from './src/services/supabase';
+import { clearSupabaseAuthSession, supabase } from './src/services/supabase';
 import { useAuthStore } from './src/store/useAuthStore';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkProvider } from './src/context/NetworkContext';
 
 export default function App() {
-  const { session, setSession, setUser, isLoading, setLoading, role } = useAuthStore();
-  
+  const { session, setSession, setUser, isLoading, setLoading, role } =
+    useAuthStore();
+
   const [selectedAnimal, setSelectedAnimal] = useState<Animal | null>(null);
 
-
   useEffect(() => {
-    setLoading(true);
+    let isMounted = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const initializeAuth = async () => {
+      setLoading(true);
+
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          await clearSupabaseAuthSession();
+          if (isMounted) {
+            setSession(null);
+            setUser(null);
+          }
+          return;
+        }
+
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch {
+        if (isMounted) {
+          await clearSupabaseAuthSession();
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void initializeAuth();
 
     const {
       data: { subscription },
@@ -36,7 +69,10 @@ export default function App() {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [setLoading, setSession, setUser]);
 
   if (isLoading) {
@@ -55,12 +91,13 @@ export default function App() {
             {session?.user ? (
               role === 'admin' ? (
                 <AdminStack />
+              ) : selectedAnimal ? (
+                <DetailsScreen
+                  animal={selectedAnimal}
+                  onBack={() => setSelectedAnimal(null)}
+                />
               ) : (
-                selectedAnimal ? (
-                  <DetailsScreen animal={selectedAnimal} onBack={() => setSelectedAnimal(null)} />
-                ) : (
-                  <UserStack onAnimalPress={setSelectedAnimal} />
-                )
+                <UserStack onAnimalPress={setSelectedAnimal} />
               )
             ) : (
               <AuthStack />

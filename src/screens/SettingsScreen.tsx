@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TextInput,
+  type TextInputProps,
   TouchableOpacity,
   Image,
   ActivityIndicator,
@@ -26,10 +27,37 @@ import { CityPickerField } from '../components/CityPickerField';
 import { syncProfileEverywhere } from '../services/profileSyncService';
 import { zustandProfileSyncShelterAdapter } from '../services/profileSync/zustandProfileSyncShelterAdapter';
 import { uploadAvatarImage } from '../services/imageService';
-import { isValidPhone, isValidPostalCode, normalizePhone, normalizePostalCode } from '../utils/validation';
+import {
+  isValidPhone,
+  isValidPostalCode,
+  normalizePhone,
+  normalizePostalCode,
+} from '../utils/validation';
 import { useToast } from '../context/ToastContext';
 
-const InputGroup = ({ icon, value, onChange, placeholder, secure = false, editable = true }: any) => (
+type InputGroupProps = {
+  icon: React.ReactNode;
+  value: string;
+  onChange: NonNullable<TextInputProps['onChangeText']>;
+  placeholder: string;
+  secure?: boolean;
+  editable?: boolean;
+};
+
+type SettingsScreenProps = {
+  navigation: {
+    goBack: () => void;
+  };
+};
+
+const InputGroup = ({
+  icon,
+  value,
+  onChange,
+  placeholder,
+  secure = false,
+  editable = true,
+}: InputGroupProps) => (
   <View
     style={{
       flexDirection: 'row',
@@ -61,7 +89,7 @@ const InputGroup = ({ icon, value, onChange, placeholder, secure = false, editab
   </View>
 );
 
-export const SettingsScreen = ({ navigation }: any) => {
+export const SettingsScreen = ({ navigation }: SettingsScreenProps) => {
   const { user, setUser, role } = useAuthStore();
   const { showToast } = useToast();
   const isShelter = role === 'admin';
@@ -69,17 +97,26 @@ export const SettingsScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [name, setName] = useState(
-    isShelter ? user?.user_metadata?.shelter_name : user?.user_metadata?.full_name || '',
+    isShelter
+      ? user?.user_metadata?.shelter_name
+      : user?.user_metadata?.full_name || '',
   );
-  const [city, setCity] = useState(user?.user_metadata?.city || ALL_POLAND_CITY_LABEL);
+  const [city, setCity] = useState(
+    user?.user_metadata?.city || ALL_POLAND_CITY_LABEL,
+  );
   const [phone, setPhone] = useState(user?.user_metadata?.phone || '');
-  const [shelterStreet, setShelterStreet] = useState(user?.user_metadata?.shelter_street || '');
-  const [shelterPostalCode, setShelterPostalCode] = useState(user?.user_metadata?.shelter_postal_code || '');
+  const [shelterStreet, setShelterStreet] = useState(
+    user?.user_metadata?.shelter_street || '',
+  );
+  const [shelterPostalCode, setShelterPostalCode] = useState(
+    user?.user_metadata?.shelter_postal_code || '',
+  );
   const [email, setEmail] = useState(user?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [avatar, setAvatar] = useState(user?.user_metadata?.avatar_url || null);
-  const [avatarAsset, setAvatarAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [avatarAsset, setAvatarAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -103,12 +140,20 @@ export const SettingsScreen = ({ navigation }: any) => {
     }
 
     if (newPassword.length < 6) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Nowe hasło musi mieć co najmniej 6 znaków.' });
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Nowe hasło musi mieć co najmniej 6 znaków.',
+      });
       return false;
     }
 
     if (!currentPassword) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Podaj obecne hasło, aby ustawić nowe.' });
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Podaj obecne hasło, aby ustawić nowe.',
+      });
       return false;
     }
 
@@ -118,7 +163,11 @@ export const SettingsScreen = ({ navigation }: any) => {
     });
 
     if (error) {
-      showToast({ type: 'error', title: 'Błąd', message: 'Obecne hasło jest niepoprawne.' });
+      showToast({
+        type: 'error',
+        title: 'Błąd',
+        message: 'Obecne hasło jest niepoprawne.',
+      });
       return false;
     }
 
@@ -128,6 +177,15 @@ export const SettingsScreen = ({ navigation }: any) => {
   const handleUpdateProfile = async () => {
     setLoading(true);
     try {
+      if (!user) {
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: 'Musisz być zalogowany, aby edytować profil.',
+        });
+        return;
+      }
+
       const normalizedPhone = normalizePhone(phone);
       const normalizedPostalCode = normalizePostalCode(shelterPostalCode);
 
@@ -135,14 +193,19 @@ export const SettingsScreen = ({ navigation }: any) => {
         showToast({
           type: 'error',
           title: 'Błąd',
-          message: 'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
+          message:
+            'Podaj poprawny numer telefonu (np. 123 456 789 lub +48 123 456 789).',
         });
         setLoading(false);
         return;
       }
 
       if (isShelter && !isValidPostalCode(normalizedPostalCode)) {
-        showToast({ type: 'error', title: 'Błąd', message: 'Podaj poprawny kod pocztowy w formacie 00-000.' });
+        showToast({
+          type: 'error',
+          title: 'Błąd',
+          message: 'Podaj poprawny kod pocztowy w formacie 00-000.',
+        });
         setLoading(false);
         return;
       }
@@ -158,16 +221,24 @@ export const SettingsScreen = ({ navigation }: any) => {
       if (avatarAsset) {
         setAvatarUploading(true);
         try {
-          const uploadedUrl = await uploadAvatarImage(avatarAsset, user?.id || 'unknown');
+          const uploadedUrl = await uploadAvatarImage(avatarAsset, user.id);
           if (!uploadedUrl) {
-            showToast({ type: 'error', title: 'Błąd', message: 'Nie udało się wgrać awatara. Spróbuj ponownie.' });
+            showToast({
+              type: 'error',
+              title: 'Błąd',
+              message: 'Nie udało się wgrać awatara. Spróbuj ponownie.',
+            });
             setLoading(false);
             setAvatarUploading(false);
             return;
           }
           finalAvatarUrl = uploadedUrl;
         } catch (error) {
-          showToast({ type: 'error', title: 'Błąd', message: 'Błąd podczas wgrywania awatara.' });
+          showToast({
+            type: 'error',
+            title: 'Błąd',
+            message: 'Błąd podczas wgrywania awatara.',
+          });
           setLoading(false);
           setAvatarUploading(false);
           return;
@@ -180,7 +251,7 @@ export const SettingsScreen = ({ navigation }: any) => {
       const updatedUser = await syncProfileEverywhere(
         {
           role: isShelter ? 'admin' : 'user',
-          user: user!,
+          user,
           fullName: name,
           city,
           phone: normalizedPhone,
@@ -195,10 +266,17 @@ export const SettingsScreen = ({ navigation }: any) => {
 
       setUser(updatedUser);
       setAvatarAsset(null);
-      showToast({ type: 'success', message: 'Dane profilowe zostały zaktualizowane.' });
+      showToast({
+        type: 'success',
+        message: 'Dane profilowe zostały zaktualizowane.',
+      });
       navigation.goBack();
-    } catch (error: any) {
-      showToast({ type: 'error', title: 'Błąd', message: error.message });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Nie udało się zaktualizować profilu.';
+      showToast({ type: 'error', title: 'Błąd', message });
     } finally {
       setLoading(false);
     }
@@ -245,7 +323,10 @@ export const SettingsScreen = ({ navigation }: any) => {
         </View>
 
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
-          <TouchableOpacity onPress={pickImage} style={{ position: 'relative' }}>
+          <TouchableOpacity
+            onPress={pickImage}
+            style={{ position: 'relative' }}
+          >
             <View
               style={{
                 width: 110,
@@ -259,7 +340,10 @@ export const SettingsScreen = ({ navigation }: any) => {
               }}
             >
               {avatar ? (
-                <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%', borderRadius: 55 }} />
+                <Image
+                  source={{ uri: avatar }}
+                  style={{ width: '100%', height: '100%', borderRadius: 55 }}
+                />
               ) : (
                 <View
                   style={{
@@ -270,7 +354,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                     backgroundColor: 'white',
                   }}
                 >
-                  {isShelter ? <Home size={34} color="#94a3b8" /> : <User size={34} color="#94a3b8" />}
+                  {isShelter ? (
+                    <Home size={34} color="#94a3b8" />
+                  ) : (
+                    <User size={34} color="#94a3b8" />
+                  )}
                 </View>
               )}
             </View>
@@ -309,7 +397,9 @@ export const SettingsScreen = ({ navigation }: any) => {
             </Text>
 
             <InputGroup
-              icon={<User size={18} color="#64748b" style={{ marginRight: 8 }} />}
+              icon={
+                <User size={18} color="#64748b" style={{ marginRight: 8 }} />
+              }
               value={name}
               onChange={setName}
               placeholder={isShelter ? 'Nazwa schroniska' : 'Imię i nazwisko'}
@@ -320,14 +410,26 @@ export const SettingsScreen = ({ navigation }: any) => {
             {isShelter ? (
               <>
                 <InputGroup
-                  icon={<MapPin size={18} color="#64748b" style={{ marginRight: 8 }} />}
+                  icon={
+                    <MapPin
+                      size={18}
+                      color="#64748b"
+                      style={{ marginRight: 8 }}
+                    />
+                  }
                   value={shelterStreet}
                   onChange={setShelterStreet}
                   placeholder="np. ul. Leśna 10"
                 />
 
                 <InputGroup
-                  icon={<MapPin size={18} color="#64748b" style={{ marginRight: 8 }} />}
+                  icon={
+                    <MapPin
+                      size={18}
+                      color="#64748b"
+                      style={{ marginRight: 8 }}
+                    />
+                  }
                   value={shelterPostalCode}
                   onChange={setShelterPostalCode}
                   placeholder="00-000"
@@ -336,7 +438,9 @@ export const SettingsScreen = ({ navigation }: any) => {
             ) : null}
 
             <InputGroup
-              icon={<Phone size={18} color="#64748b" style={{ marginRight: 8 }} />}
+              icon={
+                <Phone size={18} color="#64748b" style={{ marginRight: 8 }} />
+              }
               value={phone}
               onChange={setPhone}
               placeholder="Telefon"
@@ -371,7 +475,14 @@ export const SettingsScreen = ({ navigation }: any) => {
             >
               <Mail size={18} color="#94a3b8" style={{ marginRight: 8 }} />
               <View style={{ flex: 1, paddingVertical: 12 }}>
-                <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: '700', marginBottom: 2 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: '#94a3b8',
+                    fontWeight: '700',
+                    marginBottom: 2,
+                  }}
+                >
                   E-mail konta (nieedytowalny)
                 </Text>
                 <Text
@@ -385,7 +496,9 @@ export const SettingsScreen = ({ navigation }: any) => {
             </View>
 
             <InputGroup
-              icon={<Lock size={18} color="#64748b" style={{ marginRight: 8 }} />}
+              icon={
+                <Lock size={18} color="#64748b" style={{ marginRight: 8 }} />
+              }
               value={currentPassword}
               onChange={setCurrentPassword}
               placeholder="Obecne hasło (wymagane przy zmianie)"
@@ -393,7 +506,9 @@ export const SettingsScreen = ({ navigation }: any) => {
             />
 
             <InputGroup
-              icon={<Lock size={18} color="#64748b" style={{ marginRight: 8 }} />}
+              icon={
+                <Lock size={18} color="#64748b" style={{ marginRight: 8 }} />
+              }
               value={newPassword}
               onChange={setNewPassword}
               placeholder="Nowe hasło (opcjonalne)"
@@ -416,7 +531,9 @@ export const SettingsScreen = ({ navigation }: any) => {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>
+              <Text
+                style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}
+              >
                 ZAPISZ ZMIANY
               </Text>
             )}
